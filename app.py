@@ -29,7 +29,7 @@ def save_settings(data_dict):
 
 saved_settings = load_settings()
 
-st.title("🚀 Arista ANTA Web GUI (v2.4)")
+st.title("🚀 Arista ANTA Web GUI (v2.5)")
 st.markdown("Manage your devices, tests, and run validations without writing any code.")
 st.divider()
 
@@ -209,7 +209,10 @@ with tab_catalog:
     ALL_TEST_KEYS = [
         "chk_hw_trans", "chk_hw_cool", "chk_hw_power", "chk_hw_temp",
         "chk_sys_uptime", "chk_sys_ntp", "chk_sys_coredump", "chk_sys_reload",
-        "chk_aaa_authen", "chk_conn_ping", "chk_conn_lldp",
+        "chk_aaa_authen", "chk_aaa_authz", "chk_aaa_acct_default", "chk_aaa_acct_console",
+        "chk_aaa_tacacs_src", "chk_aaa_tacacs_servers", "chk_aaa_tacacs_groups",
+        "chk_aaa_radius_src", "chk_aaa_radius_servers",
+        "chk_conn_ping", "chk_conn_lldp",
         "chk_cfg_aaa", "chk_cfg_no_enable", "chk_cfg_eapi", "chk_cfg_no_http", "chk_cfg_syslog", "chk_cfg_no_plaintext_sec",
         "chk_int_err", "chk_int_disc", "chk_int_status",
         "chk_int_proxy_arp", "chk_int_ill_lacp", "chk_int_err_dis", "chk_int_util",
@@ -376,10 +379,43 @@ with tab_catalog:
             sys_coredump = st.checkbox("Verify No Coredumps", key="chk_sys_coredump")
             sys_reload = st.checkbox("Verify Reload Cause", key="chk_sys_reload")
 
-        with st.expander("🔐 AAA Tests", expanded=st.session_state.expand_state):
+        with st.expander("🔐 AAA Tests (Full Suite)", expanded=st.session_state.expand_state):
+            # Auth
             aaa_authen = st.checkbox("Verify Authentication Methods", key="chk_aaa_authen")
-            aaa_method = st.text_input("Expected Method", "local", disabled=not aaa_authen)
-            aaa_type = st.selectbox("Authentication Type", ["login", "enable"], disabled=not aaa_authen)
+            aaa_method = st.text_input("Expected Auth Method", "local", disabled=not aaa_authen)
+            aaa_type = st.selectbox("Auth Type", ["login", "enable"], disabled=not aaa_authen)
+
+            aaa_authz = st.checkbox("Verify Authorization Methods", key="chk_aaa_authz")
+            aaa_authz_method = st.text_input("Expected Authz Method", "group tacacs+", disabled=not aaa_authz)
+
+            st.divider()
+            # Accounting
+            aaa_acct_def = st.checkbox("Verify Accounting Default Methods", key="chk_aaa_acct_default")
+            aaa_acct_def_methods = st.text_input("Acct Default Methods (comma-separated)", "group tacacs+, local", disabled=not aaa_acct_def)
+
+            aaa_acct_con = st.checkbox("Verify Accounting Console Methods", key="chk_aaa_acct_console")
+            aaa_acct_con_methods = st.text_input("Acct Console Methods (comma-separated)", "local", disabled=not aaa_acct_con)
+
+            st.divider()
+            # TACACS+
+            aaa_tacacs_src = st.checkbox("Verify TACACS Source Interface", key="chk_aaa_tacacs_src")
+            aaa_tacacs_src_intf = st.text_input("TACACS Source Interface", "Management1", disabled=not aaa_tacacs_src)
+            aaa_tacacs_src_vrf = st.text_input("TACACS VRF", "default", disabled=not aaa_tacacs_src)
+
+            aaa_tacacs_srv = st.checkbox("Verify TACACS Servers", key="chk_aaa_tacacs_servers")
+            aaa_tacacs_srv_ips = st.text_input("TACACS Server IPs (comma-separated)", "10.1.1.1, 10.1.1.2", disabled=not aaa_tacacs_srv)
+
+            aaa_tacacs_grp = st.checkbox("Verify TACACS Server Groups", key="chk_aaa_tacacs_groups")
+            aaa_tacacs_grp_names = st.text_input("TACACS Group Names (comma-separated)", "TACACS-SERVERS", disabled=not aaa_tacacs_grp)
+
+            st.divider()
+            # RADIUS
+            aaa_radius_src = st.checkbox("Verify RADIUS Source Interface", key="chk_aaa_radius_src")
+            aaa_radius_src_intf = st.text_input("RADIUS Source Interface", "Management1", disabled=not aaa_radius_src)
+            aaa_radius_src_vrf = st.text_input("RADIUS VRF", "default", disabled=not aaa_radius_src)
+
+            aaa_radius_srv = st.checkbox("Verify RADIUS Servers", key="chk_aaa_radius_servers")
+            aaa_radius_srv_ips = st.text_input("RADIUS Server IPs (comma-separated)", "10.2.2.1", disabled=not aaa_radius_srv)
 
         with st.expander("⚙️ Configuration Tests (VerifyRunningConfig)", expanded=st.session_state.expand_state):
             st.markdown("Build dynamic `VerifyRunningConfig` rules. Leave **Section** empty to match top-level commands. Separate nested sections with a comma.")
@@ -604,8 +640,22 @@ with tab_catalog:
     if sys_coredump: add_test("anta.tests.system", {"VerifyCoredump": None})
     if sys_reload: add_test("anta.tests.system", {"VerifyReloadCause": None})
 
-    # AAA
+    # AAA (Full Suite)
     if aaa_authen: add_test("anta.tests.aaa", {"VerifyAuthenMethods": {"methods": [aaa_method], "types": [aaa_type]}})
+    if aaa_authz: add_test("anta.tests.aaa", {"VerifyAuthzMethods": {"methods": [m.strip() for m in aaa_authz_method.split(",") if m.strip()]}})
+    if aaa_acct_def: add_test("anta.tests.aaa", {"VerifyAcctDefaultMethods": {"methods": [m.strip() for m in aaa_acct_def_methods.split(",") if m.strip()]}})
+    if aaa_acct_con: add_test("anta.tests.aaa", {"VerifyAcctConsoleMethods": {"methods": [m.strip() for m in aaa_acct_con_methods.split(",") if m.strip()]}})
+    if aaa_tacacs_src: add_test("anta.tests.aaa", {"VerifyTacacsSourceIntf": {"intf": aaa_tacacs_src_intf, "vrf": aaa_tacacs_src_vrf}})
+    if aaa_tacacs_srv: 
+        srv_list = [{"server": ip.strip()} for ip in aaa_tacacs_srv_ips.split(",") if ip.strip()]
+        add_test("anta.tests.aaa", {"VerifyTacacsServers": {"servers": srv_list}})
+    if aaa_tacacs_grp: 
+        grp_list = [g.strip() for g in aaa_tacacs_grp_names.split(",") if g.strip()]
+        add_test("anta.tests.aaa", {"VerifyTacacsServerGroups": {"groups": grp_list}})
+    if aaa_radius_src: add_test("anta.tests.aaa", {"VerifyRadiusSourceIntf": {"intf": aaa_radius_src_intf, "vrf": aaa_radius_src_vrf}})
+    if aaa_radius_srv: 
+        srv_list = [{"server": ip.strip()} for ip in aaa_radius_srv_ips.split(",") if ip.strip()]
+        add_test("anta.tests.aaa", {"VerifyRadiusServers": {"servers": srv_list}})
 
     # Configuration Tests
     if st.session_state.cfg_rules_data:
