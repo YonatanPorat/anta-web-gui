@@ -29,7 +29,7 @@ def save_settings(data_dict):
 
 saved_settings = load_settings()
 
-st.title("🚀 Arista ANTA Web GUI (v2.2)")
+st.title("🚀 Arista ANTA Web GUI (v2.3)")
 st.markdown("Manage your devices, tests, and run validations without writing any code.")
 st.divider()
 
@@ -159,7 +159,6 @@ with tab_inventory:
             }
         )
 
-    # Auto-save inventory changes
     def parse_editor_data(df, primary_col):
         records = []
         if df is None or df.empty:
@@ -250,9 +249,18 @@ with tab_catalog:
 
     active_profiles = saved_settings.get("profiles", DEFAULT_PROFILES)
 
-    # --- Clean Compact Profile Management Card ---
+    # Initialize Session State Keys if not present
+    saved_test_keys = saved_settings.get("selected_test_keys", None)
+    for k in ALL_TEST_KEYS:
+        if k not in st.session_state:
+            if saved_test_keys is not None:
+                st.session_state[k] = (k in saved_test_keys)
+            else:
+                st.session_state[k] = (k in DEFAULT_PROFILES["🟢 Basic NRFU (Quick Check)"]["keys"])
+
+    # --- Profile Toolbar ---
     with st.container(border=True):
-        st.markdown("##### 🎯 Profile Management")
+        st.markdown("##### 🎯 Active Profile")
         
         prof_col1, prof_col2, prof_col3 = st.columns([3, 1.5, 1.5])
 
@@ -270,39 +278,47 @@ with tab_catalog:
                 for k in ALL_TEST_KEYS:
                     st.session_state[k] = (k in p_keys)
                 st.session_state.cfg_rules_data = p_data.get("cfg_rules", default_config_rules)
+                save_settings({"selected_test_keys": list(p_keys)})
                 st.success(f"✅ Loaded '{selected_prof_name}'!")
                 st.rerun()
 
         with prof_col3:
-            if st.button("💾 Save Profile", use_container_width=True):
+            if st.button("💾 Save Changes to Active Profile", use_container_width=True):
                 current_keys = [k for k in ALL_TEST_KEYS if st.session_state.get(k, False)]
                 active_profiles[selected_prof_name] = {
                     "keys": current_keys,
                     "cfg_rules": st.session_state.get("cfg_rules_data", default_config_rules)
                 }
-                save_settings({"profiles": active_profiles})
-                st.success(f"✅ Saved '{selected_prof_name}'!")
+                save_settings({
+                    "profiles": active_profiles,
+                    "selected_test_keys": current_keys
+                })
+                st.success(f"✅ Saved changes to '{selected_prof_name}'!")
 
-        with st.expander("⚙️ Advanced Profile Options (Create / Delete)"):
-            c_p1, c_p2 = st.columns(2)
-            with c_p1:
+        # Separate Expanders for Clear Action Distinction
+        st.divider()
+        c_exp1, c_exp2 = st.columns(2)
+        
+        with c_exp1:
+            with st.expander("➕ Create New Profile"):
                 new_prof_input = st.text_input("New Profile Name", placeholder="e.g. Spine Switches Profile")
-                if st.button("➕ Create Profile", use_container_width=True):
+                if st.button("Save Current Selection as New Profile", use_container_width=True):
                     if new_prof_input.strip():
                         current_keys = [k for k in ALL_TEST_KEYS if st.session_state.get(k, False)]
                         active_profiles[new_prof_input.strip()] = {
                             "keys": current_keys,
                             "cfg_rules": st.session_state.get("cfg_rules_data", default_config_rules)
                         }
-                        save_settings({"profiles": active_profiles})
-                        st.success(f"✅ Created '{new_prof_input.strip()}'!")
+                        save_settings({"profiles": active_profiles, "selected_test_keys": current_keys})
+                        st.success(f"✅ Created profile '{new_prof_input.strip()}'!")
                         st.rerun()
                     else:
                         st.error("Please enter a valid profile name.")
-            
-            with c_p2:
+
+        with c_exp2:
+            with st.expander("🗑️ Delete Existing Profile"):
                 del_prof_select = st.selectbox("Select Profile to Delete", options=list(active_profiles.keys()))
-                if st.button("🗑️ Delete Selected Profile", use_container_width=True):
+                if st.button("Delete Selected Profile", use_container_width=True, type="secondary"):
                     if len(active_profiles) > 1:
                         del active_profiles[del_prof_select]
                         save_settings({"profiles": active_profiles})
@@ -311,7 +327,7 @@ with tab_catalog:
                     else:
                         st.error("Cannot delete the last remaining profile.")
 
-    # --- Compact Quick Actions Toolbar ---
+    # --- Quick Actions Toolbar ---
     if "expand_state" not in st.session_state:
         st.session_state.expand_state = False
 
@@ -344,14 +360,6 @@ with tab_catalog:
         )
 
     st.markdown("---")
-
-    saved_test_keys = saved_settings.get("selected_test_keys", None)
-    for k in ALL_TEST_KEYS:
-        if k not in st.session_state:
-            if saved_test_keys is not None:
-                st.session_state[k] = (k in saved_test_keys)
-            else:
-                st.session_state[k] = (k in DEFAULT_PROFILES["🟢 Basic NRFU (Quick Check)"]["keys"])
 
     col1, col2 = st.columns(2)
     
@@ -738,17 +746,12 @@ with tab_catalog:
                     
         with open("catalog.yml", "w") as f:
             yaml.safe_dump(catalog_dict, f, sort_keys=False)
+            
+        # Persist active test selections immediately
+        current_active_keys = [k for k in ALL_TEST_KEYS if st.session_state.get(k, False)]
+        save_settings({"selected_test_keys": current_active_keys, "catalog_tags": test_tags_input})
     except Exception as e:
         st.error(f"Failed to parse Custom YAML: {e}")
-    
-    if st.button("💾 Save Current Selection as Default (For Future Logins)", type="primary", use_container_width=True):
-        active_keys = [k for k in ALL_TEST_KEYS if st.session_state.get(k, False)]
-        save_settings({
-            "selected_test_keys": active_keys,
-            "catalog_tags": test_tags_input,
-            "cfg_rules_data": st.session_state.cfg_rules_data
-        })
-        st.success("✅ Layout saved as default for future sessions.")
 
 # ==========================================
 # TAB 4: DASHBOARD (Runner)
