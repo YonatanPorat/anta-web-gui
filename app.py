@@ -29,7 +29,7 @@ def save_settings(data_dict):
 
 saved_settings = load_settings()
 
-st.title("🚀 Arista ANTA Web GUI (v2.5)")
+st.title("🚀 Arista ANTA Web GUI (v2.6)")
 st.markdown("Manage your devices, tests, and run validations without writing any code.")
 st.divider()
 
@@ -212,8 +212,8 @@ with tab_catalog:
         "chk_aaa_authen", "chk_aaa_authz", "chk_aaa_acct_default", "chk_aaa_acct_console",
         "chk_aaa_tacacs_src", "chk_aaa_tacacs_servers", "chk_aaa_tacacs_groups",
         "chk_aaa_radius_src", "chk_aaa_radius_servers",
+        "chk_cfg_ztp", "chk_cfg_diff", "chk_cfg_banner",
         "chk_conn_ping", "chk_conn_lldp",
-        "chk_cfg_aaa", "chk_cfg_no_enable", "chk_cfg_eapi", "chk_cfg_no_http", "chk_cfg_syslog", "chk_cfg_no_plaintext_sec",
         "chk_int_err", "chk_int_disc", "chk_int_status",
         "chk_int_proxy_arp", "chk_int_ill_lacp", "chk_int_err_dis", "chk_int_util",
         "chk_int_ber", "chk_int_counter_det", "chk_int_ecn", "chk_int_egress_drop",
@@ -237,7 +237,7 @@ with tab_catalog:
 
     DEFAULT_PROFILES = {
         "🟢 Basic NRFU (Quick Check)": {
-            "keys": ["chk_hw_trans", "chk_hw_cool", "chk_hw_power", "chk_hw_temp", "chk_sys_uptime", "chk_sys_ntp", "chk_int_err", "chk_int_status"],
+            "keys": ["chk_hw_trans", "chk_hw_cool", "chk_hw_power", "chk_hw_temp", "chk_sys_uptime", "chk_sys_ntp", "chk_int_err", "chk_int_status", "chk_cfg_diff"],
             "cfg_rules": []
         },
         "🔍 Deep NRFU (Full Audit)": {
@@ -380,7 +380,6 @@ with tab_catalog:
             sys_reload = st.checkbox("Verify Reload Cause", key="chk_sys_reload")
 
         with st.expander("🔐 AAA Tests (Full Suite)", expanded=st.session_state.expand_state):
-            # Auth
             aaa_authen = st.checkbox("Verify Authentication Methods", key="chk_aaa_authen")
             aaa_method = st.text_input("Expected Auth Method", "local", disabled=not aaa_authen)
             aaa_type = st.selectbox("Auth Type", ["login", "enable"], disabled=not aaa_authen)
@@ -389,7 +388,6 @@ with tab_catalog:
             aaa_authz_method = st.text_input("Expected Authz Method", "group tacacs+", disabled=not aaa_authz)
 
             st.divider()
-            # Accounting
             aaa_acct_def = st.checkbox("Verify Accounting Default Methods", key="chk_aaa_acct_default")
             aaa_acct_def_methods = st.text_input("Acct Default Methods (comma-separated)", "group tacacs+, local", disabled=not aaa_acct_def)
 
@@ -397,7 +395,6 @@ with tab_catalog:
             aaa_acct_con_methods = st.text_input("Acct Console Methods (comma-separated)", "local", disabled=not aaa_acct_con)
 
             st.divider()
-            # TACACS+
             aaa_tacacs_src = st.checkbox("Verify TACACS Source Interface", key="chk_aaa_tacacs_src")
             aaa_tacacs_src_intf = st.text_input("TACACS Source Interface", "Management1", disabled=not aaa_tacacs_src)
             aaa_tacacs_src_vrf = st.text_input("TACACS VRF", "default", disabled=not aaa_tacacs_src)
@@ -409,7 +406,6 @@ with tab_catalog:
             aaa_tacacs_grp_names = st.text_input("TACACS Group Names (comma-separated)", "TACACS-SERVERS", disabled=not aaa_tacacs_grp)
 
             st.divider()
-            # RADIUS
             aaa_radius_src = st.checkbox("Verify RADIUS Source Interface", key="chk_aaa_radius_src")
             aaa_radius_src_intf = st.text_input("RADIUS Source Interface", "Management1", disabled=not aaa_radius_src)
             aaa_radius_src_vrf = st.text_input("RADIUS VRF", "default", disabled=not aaa_radius_src)
@@ -417,8 +413,9 @@ with tab_catalog:
             aaa_radius_srv = st.checkbox("Verify RADIUS Servers", key="chk_aaa_radius_servers")
             aaa_radius_srv_ips = st.text_input("RADIUS Server IPs (comma-separated)", "10.2.2.1", disabled=not aaa_radius_srv)
 
-        with st.expander("⚙️ Configuration Tests (VerifyRunningConfig)", expanded=st.session_state.expand_state):
-            st.markdown("Build dynamic `VerifyRunningConfig` rules. Leave **Section** empty to match top-level commands. Separate nested sections with a comma.")
+        with st.expander("⚙️ Configuration Tests (Full Suite)", expanded=st.session_state.expand_state):
+            st.markdown("##### 1. Dynamic Running Config Rules (`VerifyRunningConfig`)")
+            st.caption("Build dynamic `VerifyRunningConfig` rules. Leave **Section** empty to match top-level commands. Separate nested sections with a comma.")
             
             if "cfg_rules_data" not in st.session_state:
                 st.session_state.cfg_rules_data = saved_settings.get("cfg_rules_data", default_config_rules)
@@ -436,6 +433,21 @@ with tab_catalog:
                 }
             )
             st.session_state.cfg_rules_data = edited_cfg_rules.to_dict("records")
+
+            st.divider()
+            st.markdown("##### 2. Additional Configuration Tests")
+            
+            cfg_ztp = st.checkbox("Verify Zero Touch Provisioning (ZTP Status)", key="chk_cfg_ztp")
+            cfg_ztp_disabled = st.checkbox("ZTP Should Be Disabled", value=True, disabled=not cfg_ztp)
+
+            cfg_diff = st.checkbox("Verify Running-Config vs Startup-Config Diff (Ensure Saved Config)", key="chk_cfg_diff")
+
+            cfg_banner = st.checkbox("Verify System Banner", key="chk_cfg_banner")
+            c_bn1, c_bn2 = st.columns(2)
+            with c_bn1:
+                cfg_banner_type = st.selectbox("Banner Type", ["login", "motd"], disabled=not cfg_banner)
+            with c_bn2:
+                cfg_banner_text = st.text_input("Expected Banner Text", "Authorized Access Only", disabled=not cfg_banner)
 
         with st.expander("🌐 Connectivity Tests", expanded=st.session_state.expand_state):
             conn_ping = st.checkbox("Verify IP Reachability (Ping)", key="chk_conn_ping")
@@ -657,7 +669,15 @@ with tab_catalog:
         srv_list = [{"server": ip.strip()} for ip in aaa_radius_srv_ips.split(",") if ip.strip()]
         add_test("anta.tests.aaa", {"VerifyRadiusServers": {"servers": srv_list}})
 
-    # Configuration Tests
+    # Configuration Tests (Full Suite)
+    if cfg_ztp:
+        add_test("anta.tests.configuration", {"VerifyZeroTouch": {"disabled": cfg_ztp_disabled}})
+    if cfg_diff:
+        add_test("anta.tests.configuration", {"VerifyRunningConfigDiff": None})
+    if cfg_banner:
+        banner_key = "login_banner" if cfg_banner_type == "login" else "motd_banner"
+        add_test("anta.tests.configuration", {"VerifyBanner": {"type": cfg_banner_type, banner_key: cfg_banner_text}})
+
     if st.session_state.cfg_rules_data:
         cfg_rules_parsed = []
         rules_map = {}
