@@ -733,7 +733,7 @@ with tab_catalog:
     if snmp_status: add_test("anta.tests.snmp", {"VerifySnmpStatus": {"vrf": snmp_vrf}})
 
     # VLAN
-    if vlan_internal: add_test("anta.tests.vlan", {"VerifyVlanInternalAllocationPolicy": {"policy": vlan_alloc_policy}})
+    if vlan_internal: add_test("anta.tests.vlan", {"VerifyVlanInternalPolicy": {"policy": vlan_alloc_policy, "start_vlan_id": 1006, "end_vlan_id": 4094}})
         
     try:
         parsed_custom = yaml.safe_load(custom_yaml)
