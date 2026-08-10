@@ -1,0 +1,5 @@
+anta_inventory:
+  hosts:
+    - host: 10.0.0.137     
+      name: Switch-01
+      tags: ['local']
