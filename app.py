@@ -29,7 +29,7 @@ def save_settings(data_dict):
 
 saved_settings = load_settings()
 
-st.title("🚀 Arista ANTA Web GUI (v2.3)")
+st.title("🚀 Arista ANTA Web GUI (v2.4)")
 st.markdown("Manage your devices, tests, and run validations without writing any code.")
 st.divider()
 
@@ -295,7 +295,6 @@ with tab_catalog:
                 })
                 st.success(f"✅ Saved changes to '{selected_prof_name}'!")
 
-        # Separate Expanders for Clear Action Distinction
         st.divider()
         c_exp1, c_exp2 = st.columns(2)
         
@@ -560,6 +559,11 @@ with tab_catalog:
         with st.expander("🏢 VLAN Tests", expanded=st.session_state.expand_state):
             vlan_internal = st.checkbox("Verify VLAN Internal Allocation", key="chk_vlan_internal")
             vlan_alloc_policy = st.selectbox("Allocation Policy", ["ascending", "descending"], disabled=not vlan_internal)
+            col_v1, col_v2 = st.columns(2)
+            with col_v1:
+                vlan_start_id = st.number_input("Start VLAN ID", min_value=1, max_value=4094, value=1006, disabled=not vlan_internal)
+            with col_v2:
+                vlan_end_id = st.number_input("End VLAN ID", min_value=1, max_value=4094, value=4094, disabled=not vlan_internal)
 
     st.markdown("### 🧩 Advanced (Custom ANTA Tests)")
     st.markdown("Paste custom YAML config for supported tests.")
@@ -733,7 +737,14 @@ with tab_catalog:
     if snmp_status: add_test("anta.tests.snmp", {"VerifySnmpStatus": {"vrf": snmp_vrf}})
 
     # VLAN
-    if vlan_internal: add_test("anta.tests.vlan", {"VerifyVlanInternalPolicy": {"policy": vlan_alloc_policy, "start_vlan_id": 1006, "end_vlan_id": 4094}})
+    if vlan_internal: 
+        add_test("anta.tests.vlan", {
+            "VerifyVlanInternalPolicy": {
+                "policy": vlan_alloc_policy,
+                "start_vlan_id": int(vlan_start_id),
+                "end_vlan_id": int(vlan_end_id)
+            }
+        })
         
     try:
         parsed_custom = yaml.safe_load(custom_yaml)
@@ -747,7 +758,6 @@ with tab_catalog:
         with open("catalog.yml", "w") as f:
             yaml.safe_dump(catalog_dict, f, sort_keys=False)
             
-        # Persist active test selections immediately
         current_active_keys = [k for k in ALL_TEST_KEYS if st.session_state.get(k, False)]
         save_settings({"selected_test_keys": current_active_keys, "catalog_tags": test_tags_input})
     except Exception as e:
