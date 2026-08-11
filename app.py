@@ -29,7 +29,7 @@ def save_settings(data_dict):
 
 saved_settings = load_settings()
 
-st.title("🚀 Arista ANTA Web GUI (v2.6)")
+st.title("🚀 Arista ANTA Web GUI (v2.7)")
 st.markdown("Manage your devices, tests, and run validations without writing any code.")
 st.divider()
 
@@ -366,12 +366,20 @@ with tab_catalog:
     col1, col2 = st.columns(2)
     
     with col1:
-        with st.expander("🔌 Hardware Tests", expanded=st.session_state.expand_state):
-            hw_trans = st.checkbox("Verify Transceivers Manufacturers", key="chk_hw_trans")
-            hw_cool = st.checkbox("Verify System Cooling", key="chk_hw_cool")
-            hw_power = st.checkbox("Verify Power Supplies", key="chk_hw_power")
-            hw_temp = st.checkbox("Verify Temperature", key="chk_hw_temp")
+        with st.expander("🔌 Hardware Tests (Full Suite)", expanded=st.session_state.expand_state):
+            hw_trans = st.checkbox("Verify Transceivers Manufacturers (`VerifyTransceiversManufacturers`)", key="chk_hw_trans")
+            hw_trans_mfg = st.text_input("Expected Manufacturers (comma-separated)", "Arista Networks, ARISTA", disabled=not hw_trans)
             
+            st.divider()
+            hw_cool = st.checkbox("Verify System Cooling (`VerifyEnvironmentSystemCooling`)", key="chk_hw_cool")
+            
+            st.divider()
+            hw_power = st.checkbox("Verify Power Supplies (`VerifyEnvironmentPower`)", key="chk_hw_power")
+            hw_power_states = st.text_input("Accepted Power States (comma-separated)", "ok", disabled=not hw_power)
+            
+            st.divider()
+            hw_temp = st.checkbox("Verify Temperature (`VerifyTemperature`)", key="chk_hw_temp")
+
         with st.expander("💻 System Tests", expanded=st.session_state.expand_state):
             sys_uptime = st.checkbox("Verify Minimum Uptime", key="chk_sys_uptime")
             sys_uptime_val = st.number_input("Minimum Uptime (seconds)", value=60, disabled=not sys_uptime)
@@ -640,10 +648,14 @@ with tab_catalog:
             val = test_body if test_body else None
             catalog_dict[module].append({test_name: val})
 
-    # Hardware
-    if hw_trans: add_test("anta.tests.hardware", {"VerifyTransceiversManufacturers": {"manufacturers": ["Arista Networks", "ARISTA"]}})
+    # Hardware (Full Suite)
+    if hw_trans: 
+        mfg_list = [m.strip() for m in hw_trans_mfg.split(",") if m.strip()]
+        add_test("anta.tests.hardware", {"VerifyTransceiversManufacturers": {"manufacturers": mfg_list}})
     if hw_cool: add_test("anta.tests.hardware", {"VerifyEnvironmentSystemCooling": None})
-    if hw_power: add_test("anta.tests.hardware", {"VerifyEnvironmentPower": {"states": ["ok"]}})
+    if hw_power: 
+        states_list = [s.strip() for s in hw_power_states.split(",") if s.strip()]
+        add_test("anta.tests.hardware", {"VerifyEnvironmentPower": {"states": states_list}})
     if hw_temp: add_test("anta.tests.hardware", {"VerifyTemperature": None})
         
     # System
