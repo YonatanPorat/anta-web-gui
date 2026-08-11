@@ -243,7 +243,9 @@ with tab_catalog:
         if selected_cat == "AAA":
             bind_cb("Verify Authentication Methods (`VerifyAuthenMethods`)", "chk_aaa_authen")
             if st.session_state.get("chk_aaa_authen"):
-                st.text_input("Expected Auth Methods (comma-separated)", value=st.session_state.get("param_aaa_authen_methods", "local"), key="param_aaa_authen_methods")
+                c1, c2 = st.columns(2)
+                with c1: st.text_input("Expected Auth Methods (comma-separated)", value=st.session_state.get("param_aaa_authen_methods", "local"), key="param_aaa_authen_methods")
+                with c2: st.selectbox("Auth Type", ["login", "enable", "dot1x"], key="param_aaa_authen_types")
             
             bind_cb("Verify Authorization Methods (`VerifyAuthzMethods`)", "chk_aaa_authz")
             if st.session_state.get("chk_aaa_authz"):
@@ -681,7 +683,10 @@ with tab_catalog:
 
     # Key to Module & Test Class mappings
     key_to_test_map = {
-        "chk_aaa_authen": ("anta.tests.aaa", "VerifyAuthenMethods", {"methods": [m.strip() for m in st.session_state.get("param_aaa_authen_methods", "local").split(",") if m.strip()]}),
+        "chk_aaa_authen": ("anta.tests.aaa", "VerifyAuthenMethods", {
+            "methods": [m.strip() for m in st.session_state.get("param_aaa_authen_methods", "local").split(",") if m.strip()],
+            "types": [st.session_state.get("param_aaa_authen_types", "login")]
+        }),
         "chk_aaa_authz": ("anta.tests.aaa", "VerifyAuthzMethods", {"methods": [m.strip() for m in st.session_state.get("param_aaa_authz_methods", "group tacacs+").split(",") if m.strip()]}),
         "chk_aaa_acct_default": ("anta.tests.aaa", "VerifyAcctDefaultMethods", None),
         "chk_aaa_acct_console": ("anta.tests.aaa", "VerifyAcctConsoleMethods", None),
@@ -782,36 +787,13 @@ with tab_catalog:
         "chk_vlan_internal": ("anta.tests.vlan", "VerifyVlanInternalPolicy", {"policy": st.session_state.get("param_vlan_policy", "ascending"), "start_vlan_id": int(st.session_state.get("param_vlan_start", 1006)), "end_vlan_id": int(st.session_state.get("param_vlan_end", 4094))})
     }
 
-    # Map dynamic config rules if box is ticked (Fixed ANTA compliance schema)
+    # Map dynamic config rules if box is ticked
     if st.session_state.get("chk_cfg_rules") and st.session_state.get("cfg_rules_data"):
         cfg_rules_parsed = []
-        rules_map = {}
-        
         for row in st.session_state.cfg_rules_data:
             match_val = str(row.get("Match", "")).strip()
-            if not match_val:
-                continue
-                
-            sec_val = str(row.get("Section", "")).strip()
-            mode_val = row.get("Mode", "exact")
-            absent_val = bool(row.get("Absent", False))
-            desc_val = str(row.get("Description", "")).strip()
-            
-            entry = {"match": match_val}
-            if mode_val != "exact": entry["mode"] = mode_val
-            if absent_val: entry["absent"] = True
-            if desc_val: entry["description"] = desc_val
-                
-            if sec_val not in rules_map:
-                rules_map[sec_val] = []
-            rules_map[sec_val].append(entry)
-            
-        for sec, entries in rules_map.items():
-            rule = {"entries": entries}
-            if sec:
-                rule["section"] = [s.strip() for s in sec.split(",") if s.strip()]
-            cfg_rules_parsed.append(rule)
-            
+            if match_val:
+                cfg_rules_parsed.append({"match": match_val, "mode": row.get("Mode", "exact")})
         if cfg_rules_parsed:
             add_test("anta.tests.configuration", "VerifyRunningConfig", {"rules": cfg_rules_parsed})
 
