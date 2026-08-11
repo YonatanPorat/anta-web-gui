@@ -51,7 +51,6 @@ ALL_TEST_KEYS = [
     "chk_hw_linecards", "chk_hw_drops", "chk_hw_chassis", "chk_hw_cooling_fans", "chk_hw_power",
     "chk_hw_sys_cooling", "chk_hw_capacity", "chk_hw_inventory", "chk_hw_module", "chk_hw_pcie",
     "chk_hw_supervisor", "chk_hw_temp", "chk_hw_trans", "chk_hw_trans_temp",
-    "chk_hw_trans_optics",
     # Interfaces
     "chk_int_proxy_arp", "chk_int_ill_lacp", "chk_int_disc", "chk_int_err_dis", "chk_int_err",
     "chk_int_ipv4", "chk_int_util", "chk_int_ber", "chk_int_counter_det", "chk_int_ecn",
@@ -360,6 +359,9 @@ with tab_catalog:
                 st.number_input("Connections Count", value=st.session_state.get("param_cvx_active_cnt", 1), key="param_cvx_active_cnt")
 
             bind_cb("Verify CVX Cluster Status (`VerifyCVXClusterStatus`)", "chk_cvx_cluster")
+            if st.session_state.get("chk_cvx_cluster"):
+                st.selectbox("CVX Peer Status", ["reachable", "joined"], key="param_cvx_peer_status")
+
             bind_cb("Verify Management CVX (`VerifyManagementCVX`)", "chk_cvx_mgmt")
             bind_cb("Verify MCS Client Mounts (`VerifyMcsClientMounts`)", "chk_cvx_client_mounts")
             
@@ -419,7 +421,6 @@ with tab_catalog:
                 st.text_input("Expected Manufacturers (comma-separated)", value=st.session_state.get("param_hw_mfg", "Arista Networks, ARISTA"), key="param_hw_mfg")
             
             bind_cb("Verify Transceivers Temperature (`VerifyTransceiversTemperature`)", "chk_hw_trans_temp")
-            bind_cb("Verify Transceivers Optics (`VerifyTransceiversOptics`)", "chk_hw_trans_optics")
 
         elif selected_cat == "Interfaces":
             bind_cb("Verify Proxy ARP (`VerifyIPProxyARP`)", "chk_int_proxy_arp")
@@ -695,7 +696,9 @@ with tab_catalog:
             
             bind_cb("Verify STUN Server (`VerifyStunServer`)", "chk_stun_status")
             if st.session_state.get("chk_stun_status"):
-                st.text_input("STUN Server Host/IP", value=st.session_state.get("param_stun_server", "stun.l.google.com"), key="param_stun_server")
+                col1, col2 = st.columns(2)
+                with col1: st.text_input("STUN Server Host/IP", value=st.session_state.get("param_stun_server", "10.0.0.1"), key="param_stun_server")
+                with col2: st.number_input("STUN Server Port", value=st.session_state.get("param_stun_port", 3478), key="param_stun_port")
 
         elif selected_cat == "System":
             bind_cb("Verify Agent Logs (`VerifyAgentLogs`)", "chk_sys_agent_logs")
@@ -745,7 +748,7 @@ with tab_catalog:
         if parsed_tags: body["filters"] = {"tags": parsed_tags}
         catalog_dict[module].append({test_name: body if body else None})
 
-    # Key to Module & Test Class mappings with fixed schemas
+    # Key to Module & Test Class mappings with fixed schema inputs
     key_to_test_map = {
         "chk_aaa_authen": ("anta.tests.aaa", "VerifyAuthenMethods", {
             "methods": [m.strip() for m in st.session_state.get("param_aaa_authen_methods", "local").split(",") if m.strip()],
@@ -817,7 +820,7 @@ with tab_catalog:
         "chk_conn_ping": ("anta.tests.connectivity", "VerifyReachability", {"hosts": [{"destination": dest.strip()} for dest in st.session_state.get("param_conn_dest", "8.8.8.8").split(",") if dest.strip()]}),
 
         "chk_cvx_active": ("anta.tests.cvx", "VerifyActiveCVXConnections", {"connections_count": int(st.session_state.get("param_cvx_active_cnt", 1))}),
-        "chk_cvx_cluster": ("anta.tests.cvx", "VerifyCVXClusterStatus", None),
+        "chk_cvx_cluster": ("anta.tests.cvx", "VerifyCVXClusterStatus", {"peer_status": st.session_state.get("param_cvx_peer_status", "reachable")}),
         "chk_cvx_mgmt": ("anta.tests.cvx", "VerifyManagementCVX", None),
         "chk_cvx_client_mounts": ("anta.tests.cvx", "VerifyMcsClientMounts", None),
         "chk_cvx_server_mounts": ("anta.tests.cvx", "VerifyMcsServerMounts", {"connections_count": int(st.session_state.get("param_cvx_mcs_cnt", 1))}),
@@ -843,7 +846,6 @@ with tab_catalog:
         "chk_hw_temp": ("anta.tests.hardware", "VerifyTemperature", None),
         "chk_hw_trans": ("anta.tests.hardware", "VerifyTransceiversManufacturers", {"manufacturers": [m.strip() for m in st.session_state.get("param_hw_mfg", "Arista Networks").split(",") if m.strip()]}),
         "chk_hw_trans_temp": ("anta.tests.hardware", "VerifyTransceiversTemperature", None),
-        "chk_hw_trans_optics": ("anta.tests.hardware", "VerifyTransceiversOptics", None),
 
         "chk_int_ipv4": ("anta.tests.interfaces", "VerifyInterfaceIPv4", {"interfaces": [{"name": st.session_state.get("param_int_v4_name", "Ethernet1"), "primary_ip": st.session_state.get("param_int_v4_ip", "10.0.0.1/24")}]}),
         "chk_int_speed": ("anta.tests.interfaces", "VerifyInterfacesSpeed", {"interfaces": [{"name": st.session_state.get("param_int_speed_name", "Ethernet1"), "speed": int(st.session_state.get("param_int_speed_val", 1000))}]}),
@@ -873,7 +875,8 @@ with tab_catalog:
         "chk_bgp_specific_peers": ("anta.tests.routing.bgp", "VerifyBGPSpecificPeers", {
             "address_families": [{
                 "afi": "ipv4",
-                "safi": "unicast", "bgp_peers": [{
+                "safi": "unicast",
+                "peers": [{
                     "peer_address": st.session_state.get("param_bgp_spec_ip", "10.0.0.2"),
                     "vrf": st.session_state.get("param_bgp_spec_vrf", "default"),
                     "asn": int(st.session_state.get("param_bgp_spec_asn", 65000))
@@ -893,7 +896,7 @@ with tab_catalog:
         "chk_sec_v4_acl": ("anta.tests.security", "VerifyIPv4ACL", {"ipv4_access_lists": [{"name": st.session_state.get("param_sec_v4_acl_name", "ACL-MGMT"), "entries": [{"sequence": int(st.session_state.get("param_sec_v4_seq", 10)), "action": st.session_state.get("param_sec_v4_act", "permit")}]}]}),
         "chk_svc_dns_lookup": ("anta.tests.services", "VerifyDNSLookup", {"domain_names": [d.strip() for d in st.session_state.get("param_svc_dns_domains", "arista.com").split(",") if d.strip()]}),
         "chk_svc_dns_servers": ("anta.tests.services", "VerifyDNSServers", {"dns_servers": [{"server_address": ip.strip(), "vrf": st.session_state.get("param_svc_dns_vrf", "default"), "priority": int(st.session_state.get("param_svc_dns_prio", 1))} for ip in st.session_state.get("param_svc_dns_ips", "8.8.8.8").split(",") if ip.strip()]}),
-        "chk_stun_status": ("anta.tests.stun", "VerifyStunServer", {"server": st.session_state.get("param_stun_server", "stun.l.google.com")}),
+        "chk_stun_status": ("anta.tests.stun", "VerifyStunServer", {"servers": [{"server_address": st.session_state.get("param_stun_server", "10.0.0.1"), "server_port": int(st.session_state.get("param_stun_port", 3478))}]}),
         "chk_vlan_internal": ("anta.tests.vlan", "VerifyVlanInternalPolicy", {"policy": st.session_state.get("param_vlan_policy", "ascending"), "start_vlan_id": int(st.session_state.get("param_vlan_start", 1006)), "end_vlan_id": int(st.session_state.get("param_vlan_end", 4094))})
     }
 
@@ -935,7 +938,7 @@ with tab_catalog:
         if st.session_state.get(k, False):
             add_test(mod, test_cls, params)
 
-    # --- PER-TEST PRE-VALIDATION LOGIC (FULL DETAILED TRACE) ---
+    # --- PER-TEST PRE-VALIDATION LOGIC ---
     valid_catalog_dict = {}
     invalid_config_results = []
 
