@@ -29,7 +29,7 @@ def save_settings(data_dict):
 
 saved_settings = load_settings()
 
-st.title("🚀 Arista ANTA Web GUI (v2.9)")
+st.title("🚀 Arista ANTA Web GUI (v3.0)")
 st.markdown("Manage your devices, tests, and run validations without writing any code.")
 st.divider()
 
@@ -204,7 +204,7 @@ with tab_inventory:
 # ==========================================
 with tab_catalog:
     st.subheader("📋 Test Catalog Builder")
-    st.caption("Select tests and configure parameters using the category navigation on the right.")
+    st.caption("Select tests and configure parameters using the category navigation on the left.")
 
     ALL_TEST_KEYS = [
         "chk_hw_trans", "chk_hw_cool", "chk_hw_power", "chk_hw_temp", "chk_hw_trans_presence", "chk_hw_trans_optics", "chk_hw_pse",
@@ -350,9 +350,10 @@ with tab_catalog:
 
     st.divider()
 
-    # --- MASTER-DETAIL TWO-COLUMN LAYOUT ---
-    main_content_col, nav_side_col = st.columns([3.2, 1.3], gap="large")
+    # --- MASTER-DETAIL TWO-COLUMN LAYOUT (Categories Left, Sub-tests Right) ---
+    nav_side_col, main_content_col = st.columns([1.3, 3.2], gap="large")
 
+    # --- NAVIGATION CATEGORIES (LEFT SIDE) ---
     with nav_side_col:
         st.markdown("### 📂 Categories")
         
@@ -388,7 +389,7 @@ with tab_catalog:
         
         selected_cat = categories_map[selected_cat_label]
 
-    # --- DETAIL SECTION (LEFT SIDE) ---
+    # --- SUB-TESTS / DETAILS SECTION (RIGHT SIDE) ---
     with main_content_col:
         st.markdown(f"### {selected_cat_label}")
         
