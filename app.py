@@ -748,7 +748,7 @@ with tab_catalog:
         if parsed_tags: body["filters"] = {"tags": parsed_tags}
         catalog_dict[module].append({test_name: body if body else None})
 
-    # Key to Module & Test Class mappings with fixed schema inputs
+    # Key to Module & Test Class mappings
     key_to_test_map = {
         "chk_aaa_authen": ("anta.tests.aaa", "VerifyAuthenMethods", {
             "methods": [m.strip() for m in st.session_state.get("param_aaa_authen_methods", "local").split(",") if m.strip()],
@@ -820,7 +820,7 @@ with tab_catalog:
         "chk_conn_ping": ("anta.tests.connectivity", "VerifyReachability", {"hosts": [{"destination": dest.strip()} for dest in st.session_state.get("param_conn_dest", "8.8.8.8").split(",") if dest.strip()]}),
 
         "chk_cvx_active": ("anta.tests.cvx", "VerifyActiveCVXConnections", {"connections_count": int(st.session_state.get("param_cvx_active_cnt", 1))}),
-        "chk_cvx_cluster": ("anta.tests.cvx", "VerifyCVXClusterStatus", {"peer_status": st.session_state.get("param_cvx_peer_status", "reachable")}),
+        "chk_cvx_cluster": ("anta.tests.cvx", "VerifyCVXClusterStatus", {"peer_status": [st.session_state.get("param_cvx_peer_status", "reachable")]}),
         "chk_cvx_mgmt": ("anta.tests.cvx", "VerifyManagementCVX", None),
         "chk_cvx_client_mounts": ("anta.tests.cvx", "VerifyMcsClientMounts", None),
         "chk_cvx_server_mounts": ("anta.tests.cvx", "VerifyMcsServerMounts", {"connections_count": int(st.session_state.get("param_cvx_mcs_cnt", 1))}),
@@ -876,11 +876,8 @@ with tab_catalog:
             "address_families": [{
                 "afi": "ipv4",
                 "safi": "unicast",
-                "peers": [{
-                    "peer_address": st.session_state.get("param_bgp_spec_ip", "10.0.0.2"),
-                    "vrf": st.session_state.get("param_bgp_spec_vrf", "default"),
-                    "asn": int(st.session_state.get("param_bgp_spec_asn", 65000))
-                }]
+                "vrf": st.session_state.get("param_bgp_spec_vrf", "default"),
+                "peers": [ip.strip() for ip in st.session_state.get("param_bgp_spec_ip", "10.0.0.2").split(",") if ip.strip()]
             }]
         }),
         "chk_rt_nexthops": ("anta.tests.routing.generic", "VerifyIPv4RouteNextHops", {"route_entries": [{"prefix": st.session_state.get("param_rt_nh_prefix", "10.0.0.0/24"), "nexthops": [ip.strip() for ip in st.session_state.get("param_rt_nh_ips", "10.100.0.1").split(",") if ip.strip()]}]}),
