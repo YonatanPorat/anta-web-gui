@@ -254,7 +254,16 @@ with tab_catalog:
                 with c2: st.selectbox("Authz Type", ["exec", "commands"], key="param_aaa_authz_types")
             
             bind_cb("Verify Accounting Default (`VerifyAcctDefaultMethods`)", "chk_aaa_acct_default")
+            if st.session_state.get("chk_aaa_acct_default"):
+                c1, c2 = st.columns(2)
+                with c1: st.text_input("Acct Default Methods (comma-separated)", value=st.session_state.get("param_aaa_acct_def_methods", "group tacacs+, local"), key="param_aaa_acct_def_methods")
+                with c2: st.selectbox("Acct Default Type", ["exec", "system", "commands", "dot1x"], key="param_aaa_acct_def_types")
+
             bind_cb("Verify Accounting Console (`VerifyAcctConsoleMethods`)", "chk_aaa_acct_console")
+            if st.session_state.get("chk_aaa_acct_console"):
+                c1, c2 = st.columns(2)
+                with c1: st.text_input("Acct Console Methods (comma-separated)", value=st.session_state.get("param_aaa_acct_con_methods", "local"), key="param_aaa_acct_con_methods")
+                with c2: st.selectbox("Acct Console Type", ["exec", "system", "commands", "dot1x"], key="param_aaa_acct_con_types")
             
             bind_cb("Verify TACACS Source Intf (`VerifyTacacsSourceIntf`)", "chk_aaa_tacacs_src")
             if st.session_state.get("chk_aaa_tacacs_src"):
@@ -270,7 +279,11 @@ with tab_catalog:
 
         elif selected_cat == "AVT_BFD":
             bind_cb("Verify AVT Path Health (`VerifyAVTPathHealth`)", "chk_avt_path")
+            
             bind_cb("Verify AVT Role (`VerifyAVTRole`)", "chk_avt_role")
+            if st.session_state.get("chk_avt_role"):
+                st.selectbox("AVT Role", ["edge", "core", "path-finder"], key="param_avt_role_val")
+                
             bind_cb("Verify AVT Specific Path (`VerifyAVTSpecificPath`)", "chk_avt_specific_path")
             st.divider()
             bind_cb("Verify BFD Peers Health (`VerifyBFDPeersHealth`)", "chk_bfd_health")
@@ -295,7 +308,7 @@ with tab_catalog:
             
             bind_cb("Verify Running Config Lines (`VerifyRunningConfigLines`)", "chk_cfg_lines")
             if st.session_state.get("chk_cfg_lines"):
-                st.text_input("Regex Lines (comma-separated)", value=st.session_state.get("param_cfg_lines_regex", "router bgp"), key="param_cfg_lines_regex")
+                st.text_input("Regex Patterns (comma-separated)", value=st.session_state.get("param_cfg_lines_regex", "router bgp"), key="param_cfg_lines_regex")
             
             bind_cb("Verify Zero Touch (`VerifyZeroTouch`)", "chk_cfg_ztp")
             
@@ -457,7 +470,7 @@ with tab_catalog:
             bind_cb("Verify Specific Path (`VerifySpecificPath`)", "chk_path_sel_specific")
             st.divider()
             bind_cb("Verify TCAM Profile (`VerifyTcamProfile`)", "chk_tcam_profile")
-            bind_cb("Verify Unified Forwarding Table Mode (`VerifyUnifiedForwardingTableMode`)", "chk_uft_mode")
+            bind_cb("Verify UFT Mode (`VerifyUnifiedForwardingTableMode`)", "chk_uft_mode")
 
         elif selected_cat == "PTP":
             bind_cb("Verify PTP Grandmaster (`VerifyPtpGMStatus`)", "chk_ptp_gm")
@@ -693,8 +706,14 @@ with tab_catalog:
             "methods": [m.strip() for m in st.session_state.get("param_aaa_authz_methods", "group tacacs+").split(",") if m.strip()],
             "types": [st.session_state.get("param_aaa_authz_types", "exec")]
         }),
-        "chk_aaa_acct_default": ("anta.tests.aaa", "VerifyAcctDefaultMethods", None),
-        "chk_aaa_acct_console": ("anta.tests.aaa", "VerifyAcctConsoleMethods", None),
+        "chk_aaa_acct_default": ("anta.tests.aaa", "VerifyAcctDefaultMethods", {
+            "methods": [m.strip() for m in st.session_state.get("param_aaa_acct_def_methods", "group tacacs+, local").split(",") if m.strip()],
+            "types": [st.session_state.get("param_aaa_acct_def_types", "exec")]
+        }),
+        "chk_aaa_acct_console": ("anta.tests.aaa", "VerifyAcctConsoleMethods", {
+            "methods": [m.strip() for m in st.session_state.get("param_aaa_acct_con_methods", "local").split(",") if m.strip()],
+            "types": [st.session_state.get("param_aaa_acct_con_types", "exec")]
+        }),
         "chk_aaa_tacacs_src": ("anta.tests.aaa", "VerifyTacacsSourceIntf", {"intf": st.session_state.get("param_aaa_tacacs_intf", "Management1")}),
         "chk_aaa_tacacs_servers": ("anta.tests.aaa", "VerifyTacacsServers", {"servers": [{"server": ip.strip()} for ip in st.session_state.get("param_aaa_tacacs_ips", "10.1.1.1").split(",") if ip.strip()]}),
         "chk_aaa_tacacs_groups": ("anta.tests.aaa", "VerifyTacacsServerGroups", None),
@@ -702,7 +721,7 @@ with tab_catalog:
         "chk_aaa_radius_servers": ("anta.tests.aaa", "VerifyRadiusServers", None),
         
         "chk_avt_path": ("anta.tests.avt", "VerifyAVTPathHealth", None),
-        "chk_avt_role": ("anta.tests.avt", "VerifyAVTRole", None),
+        "chk_avt_role": ("anta.tests.avt", "VerifyAVTRole", {"role": st.session_state.get("param_avt_role_val", "edge")}),
         "chk_avt_specific_path": ("anta.tests.avt", "VerifyAVTSpecificPath", None),
         "chk_bfd_health": ("anta.tests.bfd", "VerifyBFDPeersHealth", None),
         "chk_bfd_intervals": ("anta.tests.bfd", "VerifyBFDPeersIntervals", None),
@@ -710,7 +729,7 @@ with tab_catalog:
         "chk_bfd_specific": ("anta.tests.bfd", "VerifyBFDSpecificPeers", {"peers": [{"peer_address": st.session_state.get("param_bfd_peer_ip", "10.0.0.1"), "vrf": st.session_state.get("param_bfd_peer_vrf", "default")}]}),
 
         "chk_cfg_diff": ("anta.tests.configuration", "VerifyRunningConfigDiffs", None),
-        "chk_cfg_lines": ("anta.tests.configuration", "VerifyRunningConfigLines", {"lines": [l.strip() for l in st.session_state.get("param_cfg_lines_regex", "router bgp").split(",") if l.strip()]}),
+        "chk_cfg_lines": ("anta.tests.configuration", "VerifyRunningConfigLines", {"regex_patterns": [l.strip() for l in st.session_state.get("param_cfg_lines_regex", "router bgp").split(",") if l.strip()]}),
         "chk_cfg_ztp": ("anta.tests.configuration", "VerifyZeroTouch", None),
         "chk_cfg_banner_login": ("anta.tests.security", "VerifyBannerLogin", {"login_banner": st.session_state.get("param_banner_login_text", "Authorized Access Only")}),
         "chk_cfg_banner_motd": ("anta.tests.security", "VerifyBannerMotd", {"motd_banner": st.session_state.get("param_banner_motd_text", "Welcome")}),
