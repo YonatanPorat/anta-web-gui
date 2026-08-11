@@ -29,7 +29,7 @@ def save_settings(data_dict):
 
 saved_settings = load_settings()
 
-# Define all available test keys including new additions
+# Define all available test keys including complete BGP suite
 ALL_TEST_KEYS = [
     "chk_hw_trans", "chk_hw_cool", "chk_hw_power", "chk_hw_temp", "chk_hw_trans_presence", "chk_hw_trans_optics", "chk_hw_pse",
     "chk_sys_uptime", "chk_sys_ntp", "chk_sys_coredump", "chk_sys_reload", "chk_sys_cpu", "chk_sys_mem",
@@ -47,7 +47,8 @@ ALL_TEST_KEYS = [
     "chk_int_l3mtu", "chk_int_loopback", "chk_int_port_channel",
     "chk_int_svi", "chk_int_storm", "chk_int_ipv4",
     "chk_rt_model", "chk_rt_status", "chk_rt_size", "chk_rt_presence", "chk_rt_v6_presence", "chk_rt_bfd",
-    "chk_bgp_health", "chk_bgp_specific_peers", "chk_stp_blocked", "chk_stp_tc", "chk_stp_root", "chk_stp_mode",
+    "chk_bgp_health", "chk_bgp_health_ribd", "chk_bgp_specific_peers", "chk_bgp_peer_count", "chk_bgp_peer_state",
+    "chk_stp_blocked", "chk_stp_tc", "chk_stp_root", "chk_stp_mode",
     "chk_evpn_type5", "chk_vxlan_intf", "chk_vxlan_sanity", "chk_vtep_peers",
     "chk_mlag_status", "chk_mlag_interfaces", "chk_mlag_config_sanity", "chk_mlag_reload_delay",
     "chk_igmp_snooping_global", "chk_igmp_snooping_vlans",
@@ -443,7 +444,7 @@ with tab_catalog:
             chk_sys_mem = bind_checkbox("Verify Memory Utilization (`VerifyMemoryUtilization`)", key="chk_sys_mem")
             st.number_input("Max Allowed Memory Utilization (%)", value=st.session_state.get("param_sys_mem_val", 80), min_value=1, max_value=100, key="param_sys_mem_val", disabled=not chk_sys_mem)
 
-        # 3. SOFTWARE (UPDATED WITH TERMINATTR)
+        # 3. SOFTWARE
         elif selected_cat == "Software":
             chk_sw_version = bind_checkbox("Verify EOS Version (`VerifyEOSVersion`)", key="chk_sw_version")
             st.text_input("Expected EOS Version", value=st.session_state.get("param_sw_version_val", "4.30.2F"), key="param_sw_version_val", disabled=not chk_sw_version)
@@ -598,7 +599,7 @@ with tab_catalog:
                 bind_checkbox("Verify SVI", key="chk_int_svi")
                 bind_checkbox("Verify Storm Control Drops", key="chk_int_storm")
 
-        # 8. ROUTING GENERIC (UPDATED WITH BFD & IPV6 ROUTE PRESENCE)
+        # 8. ROUTING GENERIC
         elif selected_cat == "Routing Generic":
             chk_rt_model = bind_checkbox("Verify Routing Protocol Model (`VerifyRoutingProtocolModel`)", key="chk_rt_model")
             st.selectbox("Protocol Model", ["multi-agent", "ribd"], key="param_rt_model_val", disabled=not chk_rt_model)
@@ -627,10 +628,13 @@ with tab_catalog:
             st.divider()
             bind_checkbox("Verify BFD Single Hop Counters (`VerifyBFDSingleHopCounters`)", key="chk_rt_bfd")
 
-        # 9. ROUTING BGP (UPDATED WITH SPECIFIC PEERS)
+        # 9. ROUTING BGP (FULL EXPANDED SUITE)
         elif selected_cat == "Routing BGP":
-            chk_bgp_health = bind_checkbox("Verify BGP Peers Health (`VerifyBGPPeersHealth`)", key="chk_bgp_health")
-            st.text_input("BGP VRF", value=st.session_state.get("param_bgp_vrf", "default"), key="param_bgp_vrf", disabled=not chk_bgp_health)
+            chk_bgp_health = bind_checkbox("Verify BGP Peers Health Multi-Agent (`VerifyBGPPeersHealth`)", key="chk_bgp_health")
+            st.text_input("BGP VRF (Multi-Agent)", value=st.session_state.get("param_bgp_vrf", "default"), key="param_bgp_vrf", disabled=not chk_bgp_health)
+
+            st.divider()
+            bind_checkbox("Verify BGP Peers Health RIBD (`VerifyBGPPeersHealthRibd`)", key="chk_bgp_health_ribd")
 
             st.divider()
             chk_bgp_specific_peers = bind_checkbox("Verify BGP Specific Peers (`VerifyBGPSpecificPeers`)", key="chk_bgp_specific_peers")
@@ -638,6 +642,21 @@ with tab_catalog:
             with c_bgp1: st.text_input("Peer Neighbor IP", value=st.session_state.get("param_bgp_peer_ip", "10.0.0.2"), key="param_bgp_peer_ip", disabled=not chk_bgp_specific_peers)
             with c_bgp2: st.text_input("Peer VRF", value=st.session_state.get("param_bgp_peer_vrf", "default"), key="param_bgp_peer_vrf", disabled=not chk_bgp_specific_peers)
             with c_bgp3: st.text_input("Expected Remote AS", value=st.session_state.get("param_bgp_peer_asn", "65000"), key="param_bgp_peer_asn", disabled=not chk_bgp_specific_peers)
+
+            st.divider()
+            chk_bgp_peer_count = bind_checkbox("Verify BGP Peer Count (`VerifyBGPPeerCount`)", key="chk_bgp_peer_count")
+            c_cnt1, c_cnt2, c_cnt3, c_cnt4 = st.columns(4)
+            with c_cnt1: st.text_input("AFI (e.g. ipv4, evpn)", value=st.session_state.get("param_bgp_cnt_afi", "ipv4"), key="param_bgp_cnt_afi", disabled=not chk_bgp_peer_count)
+            with c_cnt2: st.text_input("SAFI (e.g. unicast)", value=st.session_state.get("param_bgp_cnt_safi", "unicast"), key="param_bgp_cnt_safi", disabled=not chk_bgp_peer_count)
+            with c_cnt3: st.text_input("VRF", value=st.session_state.get("param_bgp_cnt_vrf", "default"), key="param_bgp_cnt_vrf", disabled=not chk_bgp_peer_count)
+            with c_cnt4: st.number_input("Expected Peer Count", value=st.session_state.get("param_bgp_cnt_num", 2), min_value=1, key="param_bgp_cnt_num", disabled=not chk_bgp_peer_count)
+
+            st.divider()
+            chk_bgp_peer_state = bind_checkbox("Verify BGP Peer State (`VerifyBGPPeerState`)", key="chk_bgp_peer_state")
+            c_st1, c_st2, c_st3 = st.columns(3)
+            with c_st1: st.text_input("Neighbor Address", value=st.session_state.get("param_bgp_st_ip", "10.0.0.2"), key="param_bgp_st_ip", disabled=not chk_bgp_peer_state)
+            with c_st2: st.text_input("Neighbor VRF", value=st.session_state.get("param_bgp_st_vrf", "default"), key="param_bgp_st_vrf", disabled=not chk_bgp_peer_state)
+            with c_st3: st.selectbox("Expected State", ["Established", "Active", "Idle", "Connect"], key="param_bgp_st_state", disabled=not chk_bgp_peer_state)
 
         # 10. STP
         elif selected_cat == "STP":
@@ -953,19 +972,28 @@ with tab_catalog:
     if st.session_state.get("chk_int_voq", False): add_test("anta.tests.interfaces", {"VerifyInterfacesVoqAndEgressQueueDrops": None})
     if st.session_state.get("chk_int_storm", False): add_test("anta.tests.interfaces", {"VerifyStormControlDrops": None})
 
-    # Routing
+    # Routing Generic
     if st.session_state.get("chk_rt_model", False): add_test("anta.tests.routing.generic", {"VerifyRoutingProtocolModel": {"model": st.session_state.get("param_rt_model_val", "multi-agent")}})
     if st.session_state.get("chk_rt_status", False): add_test("anta.tests.routing.generic", {"VerifyRoutingStatus": {"ipv4_unicast": True}})
     if st.session_state.get("chk_rt_size", False): add_test("anta.tests.routing.generic", {"VerifyRoutingTableSize": {"minimum": int(st.session_state.get("param_rt_size_min", 1)), "maximum": int(st.session_state.get("param_rt_size_max", 1000))}})
     if st.session_state.get("chk_rt_presence", False): add_test("anta.tests.routing.generic", {"VerifyIPv4RoutePresencePerVRF": {"route_entries": [{"prefix": st.session_state.get("param_rt_prefix", "10.0.0.0/24"), "vrf": st.session_state.get("param_rt_vrf", "default")}]}})
     if st.session_state.get("chk_rt_v6_presence", False): add_test("anta.tests.routing.generic", {"VerifyIPv6RoutePresencePerVRF": {"route_entries": [{"prefix": st.session_state.get("param_rt_v6_prefix", "2001:db8::/32"), "vrf": st.session_state.get("param_rt_v6_vrf", "default")}]}})
     if st.session_state.get("chk_rt_bfd", False): add_test("anta.tests.routing.generic", {"VerifyBFDSingleHopCounters": None})
-    if st.session_state.get("chk_bgp_health", False): add_test("anta.tests.routing.bgp", {"VerifyBGPPeersHealth": {"address_families": [{"afi": "ipv4", "safi": "unicast", "vrf": st.session_state.get("param_bgp_vrf", "default")}]}})
+
+    # Routing BGP (FULL SUITE)
+    if st.session_state.get("chk_bgp_health", False): 
+        add_test("anta.tests.routing.bgp", {"VerifyBGPPeersHealth": {"address_families": [{"afi": "ipv4", "safi": "unicast", "vrf": st.session_state.get("param_bgp_vrf", "default")}]}})
+    if st.session_state.get("chk_bgp_health_ribd", False): 
+        add_test("anta.tests.routing.bgp", {"VerifyBGPPeersHealthRibd": None})
     if st.session_state.get("chk_bgp_specific_peers", False):
         try: asn_val = int(st.session_state.get("param_bgp_peer_asn", 65000))
         except ValueError: asn_val = 65000
         add_test("anta.tests.routing.bgp", {"VerifyBGPSpecificPeers": {"peers": [{"peer_address": st.session_state.get("param_bgp_peer_ip", "10.0.0.2"), "vrf": st.session_state.get("param_bgp_peer_vrf", "default"), "asn": asn_val}]}})
-    
+    if st.session_state.get("chk_bgp_peer_count", False):
+        add_test("anta.tests.routing.bgp", {"VerifyBGPPeerCount": {"address_families": [{"afi": st.session_state.get("param_bgp_cnt_afi", "ipv4"), "safi": st.session_state.get("param_bgp_cnt_safi", "unicast"), "vrf": st.session_state.get("param_bgp_cnt_vrf", "default"), "num_peers": int(st.session_state.get("param_bgp_cnt_num", 2))}]}})
+    if st.session_state.get("chk_bgp_peer_state", False):
+        add_test("anta.tests.routing.bgp", {"VerifyBGPPeerState": {"peers": [{"address": st.session_state.get("param_bgp_st_ip", "10.0.0.2"), "vrf": st.session_state.get("param_bgp_st_vrf", "default"), "state": st.session_state.get("param_bgp_st_state", "Established")}]}})
+
     # STP
     if st.session_state.get("chk_stp_blocked", False): add_test("anta.tests.stp", {"VerifySTPBlockedPorts": None})
     if st.session_state.get("chk_stp_tc", False): add_test("anta.tests.stp", {"VerifyStpTopologyChanges": {"threshold": int(st.session_state.get("param_stp_tc_threshold", 1))}})
