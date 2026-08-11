@@ -197,7 +197,7 @@ with tab_creds:
         st.success("✅ Credentials saved!")
 
 # ==========================================
-# TAB 2: INVENTORY (Fixed Keys Added)
+# TAB 2: INVENTORY
 # ==========================================
 with tab_inventory:
     st.subheader("Inventory Manager")
@@ -216,7 +216,7 @@ with tab_inventory:
     with sub_ranges: edited_ranges = st.data_editor(df_ranges, num_rows="dynamic", use_container_width=True, key="editor_ranges")
 
 # ==========================================
-# TAB 3: CATALOG BUILDER (COMPLETE SUITE)
+# TAB 3: CATALOG BUILDER (PARAMETRIZED)
 # ==========================================
 with tab_catalog:
     st.subheader("📋 Test Catalog Builder")
@@ -242,15 +242,24 @@ with tab_catalog:
 
         if selected_cat == "AAA":
             bind_cb("Verify Authentication Methods (`VerifyAuthenMethods`)", "chk_aaa_authen")
-            st.text_input("Methods (e.g., local, group tacacs+)", value=st.session_state.get("param_aaa_authen_methods", "local"), key="param_aaa_authen_methods")
+            if st.session_state.get("chk_aaa_authen"):
+                st.text_input("Expected Auth Methods (comma-separated)", value=st.session_state.get("param_aaa_authen_methods", "local"), key="param_aaa_authen_methods")
+            
             bind_cb("Verify Authorization Methods (`VerifyAuthzMethods`)", "chk_aaa_authz")
-            st.text_input("Methods (e.g., group tacacs+)", value=st.session_state.get("param_aaa_authz_methods", "group tacacs+"), key="param_aaa_authz_methods")
+            if st.session_state.get("chk_aaa_authz"):
+                st.text_input("Expected Authz Methods (comma-separated)", value=st.session_state.get("param_aaa_authz_methods", "group tacacs+"), key="param_aaa_authz_methods")
+            
             bind_cb("Verify Accounting Default (`VerifyAcctDefaultMethods`)", "chk_aaa_acct_default")
             bind_cb("Verify Accounting Console (`VerifyAcctConsoleMethods`)", "chk_aaa_acct_console")
+            
             bind_cb("Verify TACACS Source Intf (`VerifyTacacsSourceIntf`)", "chk_aaa_tacacs_src")
-            st.text_input("TACACS Source Intf", value=st.session_state.get("param_aaa_tacacs_intf", "Management1"), key="param_aaa_tacacs_intf")
+            if st.session_state.get("chk_aaa_tacacs_src"):
+                st.text_input("TACACS Source Interface", value=st.session_state.get("param_aaa_tacacs_intf", "Management1"), key="param_aaa_tacacs_intf")
+            
             bind_cb("Verify TACACS Servers (`VerifyTacacsServers`)", "chk_aaa_tacacs_servers")
-            st.text_input("TACACS Server IPs", value=st.session_state.get("param_aaa_tacacs_ips", "10.1.1.1"), key="param_aaa_tacacs_ips")
+            if st.session_state.get("chk_aaa_tacacs_servers"):
+                st.text_input("TACACS Server IPs (comma-separated)", value=st.session_state.get("param_aaa_tacacs_ips", "10.1.1.1"), key="param_aaa_tacacs_ips")
+            
             bind_cb("Verify TACACS Server Groups (`VerifyTacacsServerGroups`)", "chk_aaa_tacacs_groups")
             bind_cb("Verify RADIUS Source Intf (`VerifyRadiusSourceIntf`)", "chk_aaa_radius_src")
             bind_cb("Verify RADIUS Servers (`VerifyRadiusServers`)", "chk_aaa_radius_servers")
@@ -264,6 +273,10 @@ with tab_catalog:
             bind_cb("Verify BFD Peers Intervals (`VerifyBFDPeersIntervals`)", "chk_bfd_intervals")
             bind_cb("Verify BFD Reg Protocols (`VerifyBFDPeersRegProtocols`)", "chk_bfd_protocols")
             bind_cb("Verify BFD Specific Peers (`VerifyBFDSpecificPeers`)", "chk_bfd_specific")
+            if st.session_state.get("chk_bfd_specific"):
+                col1, col2 = st.columns(2)
+                with col1: st.text_input("BFD Peer Address", value=st.session_state.get("param_bfd_peer_ip", "10.0.0.1"), key="param_bfd_peer_ip")
+                with col2: st.text_input("BFD Peer VRF", value=st.session_state.get("param_bfd_peer_vrf", "default"), key="param_bfd_peer_vrf")
 
         elif selected_cat == "Configuration":
             st.markdown("##### Dynamic Running Config Rules (`VerifyRunningConfig`)")
@@ -273,17 +286,33 @@ with tab_catalog:
                     st.session_state.cfg_rules_data = saved_settings.get("cfg_rules_data", default_config_rules)
                 edited_cfg_rules = st.data_editor(pd.DataFrame(st.session_state.cfg_rules_data), num_rows="dynamic", use_container_width=True, key="editor_cfg_rules")
                 st.session_state.cfg_rules_data = edited_cfg_rules.to_dict("records")
+            
             bind_cb("Verify Running Config Diffs (`VerifyRunningConfigDiffs`)", "chk_cfg_diff")
+            
             bind_cb("Verify Running Config Lines (`VerifyRunningConfigLines`)", "chk_cfg_lines")
+            if st.session_state.get("chk_cfg_lines"):
+                st.text_input("Regex Lines (comma-separated)", value=st.session_state.get("param_cfg_lines_regex", "router bgp"), key="param_cfg_lines_regex")
+            
             bind_cb("Verify Zero Touch (`VerifyZeroTouch`)", "chk_cfg_ztp")
+            
             bind_cb("Verify Login Banner (`VerifyBannerLogin`)", "chk_cfg_banner_login")
+            if st.session_state.get("chk_cfg_banner_login"):
+                st.text_input("Expected Login Banner", value=st.session_state.get("param_banner_login_text", "Authorized Access Only"), key="param_banner_login_text")
+            
             bind_cb("Verify MOTD Banner (`VerifyBannerMotd`)", "chk_cfg_banner_motd")
+            if st.session_state.get("chk_cfg_banner_motd"):
+                st.text_input("Expected MOTD Banner", value=st.session_state.get("param_banner_motd_text", "Welcome"), key="param_banner_motd_text")
 
         elif selected_cat == "Connectivity":
             bind_cb("Verify LLDP Neighbors (`VerifyLLDPNeighbors`)", "chk_conn_lldp")
-            st.text_input("LLDP Local Port", value=st.session_state.get("param_conn_lldp_port", "Ethernet1"), key="param_conn_lldp_port")
+            if st.session_state.get("chk_conn_lldp"):
+                col1, col2 = st.columns(2)
+                with col1: st.text_input("LLDP Local Port", value=st.session_state.get("param_conn_lldp_port", "Ethernet1"), key="param_conn_lldp_port")
+                with col2: st.text_input("Neighbor Device Name", value=st.session_state.get("param_conn_lldp_dev", "switch2"), key="param_conn_lldp_dev")
+            
             bind_cb("Verify Reachability (`VerifyReachability`)", "chk_conn_ping")
-            st.text_input("Ping Destination IP", value=st.session_state.get("param_conn_dest", "8.8.8.8"), key="param_conn_dest")
+            if st.session_state.get("chk_conn_ping"):
+                st.text_input("Ping Destination IP(s) (comma-separated)", value=st.session_state.get("param_conn_dest", "8.8.8.8"), key="param_conn_dest")
 
         elif selected_cat == "CVX":
             bind_cb("Verify Active CVX Connections (`VerifyActiveCVXConnections`)", "chk_cvx_active")
@@ -294,6 +323,11 @@ with tab_catalog:
 
         elif selected_cat == "EVPN_VXLAN":
             bind_cb("Verify EVPN Type 5 Routes (`VerifyEVPNType5Routes`)", "chk_evpn_type5")
+            if st.session_state.get("chk_evpn_type5"):
+                col1, col2 = st.columns(2)
+                with col1: st.text_input("EVPN Prefix", value=st.session_state.get("param_evpn_prefix", "10.0.0.0/24"), key="param_evpn_prefix")
+                with col2: st.number_input("EVPN VNI", value=st.session_state.get("param_evpn_vni", 10010), key="param_evpn_vni")
+                
             bind_cb("Verify VXLAN Conn Settings (`VerifyVxlan1ConnSettings`)", "chk_vxlan_conn")
             bind_cb("Verify VXLAN Interface (`VerifyVxlan1Interface`)", "chk_vxlan_intf")
             bind_cb("Verify VXLAN VVTEP IPs (`VerifyVxlan1VVTEPIPAddresses`)", "chk_vxlan_vvtep")
@@ -323,8 +357,11 @@ with tab_catalog:
             bind_cb("Verify PCIe Errors (`VerifyPCIeErrors`)", "chk_hw_pcie")
             bind_cb("Verify Supervisor Redundancy (`VerifySupervisorRedundancy`)", "chk_hw_supervisor")
             bind_cb("Verify Temperature (`VerifyTemperature`)", "chk_hw_temp")
+            
             bind_cb("Verify Transceivers Manufacturers (`VerifyTransceiversManufacturers`)", "chk_hw_trans")
-            st.text_input("Expected Manufacturers", value=st.session_state.get("param_hw_mfg", "Arista Networks, ARISTA"), key="param_hw_mfg")
+            if st.session_state.get("chk_hw_trans"):
+                st.text_input("Expected Manufacturers (comma-separated)", value=st.session_state.get("param_hw_mfg", "Arista Networks, ARISTA"), key="param_hw_mfg")
+            
             bind_cb("Verify Transceivers Temperature (`VerifyTransceiversTemperature`)", "chk_hw_trans_temp")
             bind_cb("Verify Transceivers Presence (`VerifyTransceiversPresence`)", "chk_hw_trans_presence")
             bind_cb("Verify Transceivers Optics (`VerifyTransceiversOptics`)", "chk_hw_trans_optics")
@@ -336,7 +373,13 @@ with tab_catalog:
             bind_cb("Verify Interface Discards (`VerifyInterfaceDiscards`)", "chk_int_disc")
             bind_cb("Verify Interface ErrDisabled (`VerifyInterfaceErrDisabled`)", "chk_int_err_dis")
             bind_cb("Verify Interface Errors (`VerifyInterfaceErrors`)", "chk_int_err")
+            
             bind_cb("Verify Interface IPv4 (`VerifyInterfaceIPv4`)", "chk_int_ipv4")
+            if st.session_state.get("chk_int_ipv4"):
+                col1, col2 = st.columns(2)
+                with col1: st.text_input("Interface Name", value=st.session_state.get("param_int_v4_name", "Ethernet1"), key="param_int_v4_name")
+                with col2: st.text_input("Primary IPv4 CIDR", value=st.session_state.get("param_int_v4_ip", "10.0.0.1/24"), key="param_int_v4_ip")
+
             bind_cb("Verify Interface Utilization (`VerifyInterfaceUtilization`)", "chk_int_util")
             bind_cb("Verify Interfaces BER (`VerifyInterfacesBER`)", "chk_int_ber")
             bind_cb("Verify Counter Details (`VerifyInterfacesCounterDetails`)", "chk_int_counter_det")
@@ -345,13 +388,29 @@ with tab_catalog:
             bind_cb("Verify Optics RX Power (`VerifyInterfacesOpticsReceivePower`)", "chk_int_optics_rx")
             bind_cb("Verify Optics Temp (`VerifyInterfacesOpticsTemperature`)", "chk_int_optics_temp")
             bind_cb("Verify PFC Counters (`VerifyInterfacesPFCCounters`)", "chk_int_pfc")
+            
             bind_cb("Verify Interfaces Speed (`VerifyInterfacesSpeed`)", "chk_int_speed")
+            if st.session_state.get("chk_int_speed"):
+                col1, col2 = st.columns(2)
+                with col1: st.text_input("Speed Intf Name", value=st.session_state.get("param_int_speed_name", "Ethernet1"), key="param_int_speed_name")
+                with col2: st.number_input("Expected Speed (Mbps)", value=st.session_state.get("param_int_speed_val", 10000), key="param_int_speed_val")
+
             bind_cb("Verify Interfaces Status (`VerifyInterfacesStatus`)", "chk_int_status")
+            if st.session_state.get("chk_int_status"):
+                st.text_input("Target Interfaces (comma-separated)", value=st.session_state.get("param_target_intfs_input", "Ethernet1, Management1"), key="param_target_intfs_input")
+
             bind_cb("Verify Trident Counters (`VerifyInterfacesTridentCounters`)", "chk_int_trident")
             bind_cb("Verify VoQ Drops (`VerifyInterfacesVoqAndEgressQueueDrops`)", "chk_int_voq")
             bind_cb("Verify Virtual Router MAC (`VerifyIpVirtualRouterMac`)", "chk_int_vrrp_mac")
+            
             bind_cb("Verify L2 MTU (`VerifyL2MTU`)", "chk_int_l2mtu")
+            if st.session_state.get("chk_int_l2mtu"):
+                st.number_input("L2 MTU Value", value=st.session_state.get("param_int_l2mtu_val", 9214), key="param_int_l2mtu_val")
+
             bind_cb("Verify L3 MTU (`VerifyL3MTU`)", "chk_int_l3mtu")
+            if st.session_state.get("chk_int_l3mtu"):
+                st.number_input("L3 MTU Value", value=st.session_state.get("param_int_l3mtu_val", 1500), key="param_int_l3mtu_val")
+
             bind_cb("Verify LACP Status (`VerifyLACPInterfacesStatus`)", "chk_int_lacp_status")
             bind_cb("Verify Loopback Count (`VerifyLoopbackCount`)", "chk_int_loopback")
             bind_cb("Verify Port Channels (`VerifyPortChannels`)", "chk_int_port_channel")
@@ -377,7 +436,13 @@ with tab_catalog:
             bind_cb("Verify MLAG Dual Primary (`VerifyMlagDualPrimary`)", "chk_mlag_dual_primary")
             bind_cb("Verify MLAG Interfaces (`VerifyMlagInterfaces`)", "chk_mlag_interfaces")
             bind_cb("Verify MLAG Primary Priority (`VerifyMlagPrimaryPriority`)", "chk_mlag_priority")
+            
             bind_cb("Verify MLAG Reload Delay (`VerifyMlagReloadDelay`)", "chk_mlag_reload_delay")
+            if st.session_state.get("chk_mlag_reload_delay"):
+                col1, col2 = st.columns(2)
+                with col1: st.number_input("Reload Delay (sec)", value=st.session_state.get("param_mlag_delay", 300), key="param_mlag_delay")
+                with col2: st.number_input("Non-MLAG Delay (sec)", value=st.session_state.get("param_mlag_non_delay", 330), key="param_mlag_non_delay")
+
             bind_cb("Verify MLAG Status (`VerifyMlagStatus`)", "chk_mlag_status")
             st.divider()
             bind_cb("Verify IGMP Snooping Global (`VerifyIGMPSnoopingGlobal`)", "chk_igmp_snooping_global")
@@ -402,7 +467,13 @@ with tab_catalog:
             bind_cb("Verify BGP Exchanged Routes (`VerifyBGPExchangedRoutes`)", "chk_bgp_exchanged_routes")
             bind_cb("Verify BGP NLRI Acceptance (`VerifyBGPNlriAcceptance`)", "chk_bgp_nlri")
             bind_cb("Verify BGP Peer ASN Cap (`VerifyBGPPeerASNCap`)", "chk_bgp_asn_cap")
+            
             bind_cb("Verify BGP Peer Count (`VerifyBGPPeerCount`)", "chk_bgp_peer_count")
+            if st.session_state.get("chk_bgp_peer_count"):
+                col1, col2 = st.columns(2)
+                with col1: st.text_input("BGP VRF Name", value=st.session_state.get("param_bgp_cnt_vrf", "default"), key="param_bgp_cnt_vrf")
+                with col2: st.number_input("Expected Peer Count", value=st.session_state.get("param_bgp_cnt_num", 2), key="param_bgp_cnt_num")
+
             bind_cb("Verify BGP Peer Drop Stats (`VerifyBGPPeerDropStats`)", "chk_bgp_drop_stats")
             bind_cb("Verify BGP Peer Group (`VerifyBGPPeerGroup`)", "chk_bgp_peer_group")
             bind_cb("Verify BGP Peer MD5 Auth (`VerifyBGPPeerMD5Auth`)", "chk_bgp_md5")
@@ -418,19 +489,40 @@ with tab_catalog:
             bind_cb("Verify BGP Redistribution (`VerifyBGPRedistribution`)", "chk_bgp_redistribution")
             bind_cb("Verify BGP Route ECMP (`VerifyBGPRouteECMP`)", "chk_bgp_ecmp")
             bind_cb("Verify BGP Route Paths (`VerifyBGPRoutePaths`)", "chk_bgp_route_paths")
+            
             bind_cb("Verify BGP Specific Peers (`VerifyBGPSpecificPeers`)", "chk_bgp_specific_peers")
+            if st.session_state.get("chk_bgp_specific_peers"):
+                col1, col2, col3 = st.columns(3)
+                with col1: st.text_input("Neighbor Address", value=st.session_state.get("param_bgp_spec_ip", "10.0.0.2"), key="param_bgp_spec_ip")
+                with col2: st.text_input("Neighbor VRF", value=st.session_state.get("param_bgp_spec_vrf", "default"), key="param_bgp_spec_vrf")
+                with col3: st.number_input("Expected ASN", value=st.session_state.get("param_bgp_spec_asn", 65000), key="param_bgp_spec_asn")
+
             bind_cb("Verify BGP Timers (`VerifyBGPTimers`)", "chk_bgp_timers")
             bind_cb("Verify BGP Route Maps (`VerifyBgpRouteMaps`)", "chk_bgp_route_maps")
             bind_cb("Verify EVPN Type 2 Route (`VerifyEVPNType2Route`)", "chk_bgp_evpn_type2")
 
         elif selected_cat == "Routing_Generic":
             bind_cb("Verify IPv4 Route Next Hops (`VerifyIPv4RouteNextHops`)", "chk_rt_nexthops")
+            if st.session_state.get("chk_rt_nexthops"):
+                col1, col2 = st.columns(2)
+                with col1: st.text_input("Target Prefix", value=st.session_state.get("param_rt_nh_prefix", "10.0.0.0/24"), key="param_rt_nh_prefix")
+                with col2: st.text_input("Expected Next Hops (comma-separated)", value=st.session_state.get("param_rt_nh_ips", "10.100.0.1"), key="param_rt_nh_ips")
+
             bind_cb("Verify IPv4 Route Presence Per Prefix (`VerifyIPv4RoutePresencePerPrefix`)", "chk_rt_presence_prefix")
+            if st.session_state.get("chk_rt_presence_prefix"):
+                st.text_input("Prefixes to check (comma-separated)", value=st.session_state.get("param_rt_pres_prefixes", "10.0.0.0/24"), key="param_rt_pres_prefixes")
+
             bind_cb("Verify IPv4 Route Presence Per VRF (`VerifyIPv4RoutePresencePerVRF`)", "chk_rt_presence_vrf")
             bind_cb("Verify IPv4 Route Type (`VerifyIPv4RouteType`)", "chk_rt_route_type")
             bind_cb("Verify Routing Protocol Model (`VerifyRoutingProtocolModel`)", "chk_rt_model")
             bind_cb("Verify Routing Status (`VerifyRoutingStatus`)", "chk_rt_status")
+            
             bind_cb("Verify Routing Table Size (`VerifyRoutingTableSize`)", "chk_rt_size")
+            if st.session_state.get("chk_rt_size"):
+                col1, col2 = st.columns(2)
+                with col1: st.number_input("Minimum Routes", value=st.session_state.get("param_rt_sz_min", 1), key="param_rt_sz_min")
+                with col2: st.number_input("Maximum Routes", value=st.session_state.get("param_rt_sz_max", 10000), key="param_rt_sz_max")
+
             st.divider()
             bind_cb("Verify ISIS Graceful Restart (`VerifyISISGracefulRestart`)", "chk_isis_graceful")
             bind_cb("Verify ISIS Interface Mode (`VerifyISISInterfaceMode`)", "chk_isis_intf_mode")
@@ -467,7 +559,10 @@ with tab_catalog:
             bind_cb("Verify DNS Lookup (`VerifyDNSLookup`)", "chk_svc_dns_lookup")
             bind_cb("Verify DNS Servers (`VerifyDNSServers`)", "chk_svc_dns_servers")
             bind_cb("Verify Errdisable Recovery (`VerifyErrdisableRecovery`)", "chk_svc_errdisable_rec")
+            
             bind_cb("Verify Hostname (`VerifyHostname`)", "chk_hostname")
+            if st.session_state.get("chk_hostname"):
+                st.text_input("Expected Hostname", value=st.session_state.get("param_service_hostname", "Switch-1"), key="param_service_hostname")
 
         elif selected_cat == "SNMP":
             bind_cb("Verify SNMP Contact (`VerifySnmpContact`)", "chk_snmp_contact")
@@ -485,8 +580,11 @@ with tab_catalog:
 
         elif selected_cat == "Software":
             bind_cb("Verify EOS Extensions (`VerifyEOSExtensions`)", "chk_sw_extensions")
+            
             bind_cb("Verify EOS Version (`VerifyEOSVersion`)", "chk_sw_version")
-            st.text_input("Expected EOS Version", value=st.session_state.get("param_sw_ver", "4.30.2F"), key="param_sw_ver")
+            if st.session_state.get("chk_sw_version"):
+                st.text_input("Expected EOS Version", value=st.session_state.get("param_sw_ver", "4.30.2F"), key="param_sw_ver")
+            
             bind_cb("Verify TerminAttr Version (`VerifyTerminAttrVersion`)", "chk_sw_terminattr")
 
         elif selected_cat == "STP":
@@ -515,8 +613,10 @@ with tab_catalog:
             bind_cb("Verify NTP (`VerifyNTP`)", "chk_sys_ntp")
             bind_cb("Verify NTP Associations (`VerifyNTPAssociations`)", "chk_sys_ntp_assoc")
             bind_cb("Verify Reload Cause (`VerifyReloadCause`)", "chk_sys_reload")
+            
             bind_cb("Verify Uptime (`VerifyUptime`)", "chk_sys_uptime")
-            st.number_input("Min Uptime Sec", value=st.session_state.get("param_sys_uptime_val", 60), min_value=1, key="param_sys_uptime_val")
+            if st.session_state.get("chk_sys_uptime"):
+                st.number_input("Min Uptime (seconds)", value=st.session_state.get("param_sys_uptime_val", 60), min_value=1, key="param_sys_uptime_val")
 
         elif selected_cat == "VLAN":
             bind_cb("Verify Dynamic VLAN Source (`VerifyDynamicVlanSource`)", "chk_vlan_dynamic")
@@ -536,7 +636,7 @@ with tab_catalog:
         if parsed_tags: body["filters"] = {"tags": parsed_tags}
         catalog_dict[module].append({test_name: body if body else None})
 
-    # Exact Key to Module & Test Class mappings
+    # Key to Module & Test Class mappings
     key_to_test_map = {
         "chk_aaa_authen": ("anta.tests.aaa", "VerifyAuthenMethods", {"methods": [st.session_state.get("param_aaa_authen_methods", "local")]}),
         "chk_aaa_authz": ("anta.tests.aaa", "VerifyAuthzMethods", {"methods": [st.session_state.get("param_aaa_authz_methods", "group tacacs+")]}),
@@ -554,16 +654,16 @@ with tab_catalog:
         "chk_bfd_health": ("anta.tests.bfd", "VerifyBFDPeersHealth", None),
         "chk_bfd_intervals": ("anta.tests.bfd", "VerifyBFDPeersIntervals", None),
         "chk_bfd_protocols": ("anta.tests.bfd", "VerifyBFDPeersRegProtocols", None),
-        "chk_bfd_specific": ("anta.tests.bfd", "VerifyBFDSpecificPeers", None),
+        "chk_bfd_specific": ("anta.tests.bfd", "VerifyBFDSpecificPeers", {"peers": [{"peer_address": st.session_state.get("param_bfd_peer_ip", "10.0.0.1"), "vrf": st.session_state.get("param_bfd_peer_vrf", "default")}]}),
 
         "chk_cfg_diff": ("anta.tests.configuration", "VerifyRunningConfigDiffs", None),
-        "chk_cfg_lines": ("anta.tests.configuration", "VerifyRunningConfigLines", None),
+        "chk_cfg_lines": ("anta.tests.configuration", "VerifyRunningConfigLines", {"lines": [l.strip() for l in st.session_state.get("param_cfg_lines_regex", "router bgp").split(",") if l.strip()]}),
         "chk_cfg_ztp": ("anta.tests.configuration", "VerifyZeroTouch", None),
-        "chk_cfg_banner_login": ("anta.tests.security", "VerifyBannerLogin", None),
-        "chk_cfg_banner_motd": ("anta.tests.security", "VerifyBannerMotd", None),
+        "chk_cfg_banner_login": ("anta.tests.security", "VerifyBannerLogin", {"login_banner": st.session_state.get("param_banner_login_text", "Authorized Access Only")}),
+        "chk_cfg_banner_motd": ("anta.tests.security", "VerifyBannerMotd", {"motd_banner": st.session_state.get("param_banner_motd_text", "Welcome")}),
 
-        "chk_conn_lldp": ("anta.tests.connectivity", "VerifyLLDPNeighbors", {"neighbors": [{"port": st.session_state.get("param_conn_lldp_port", "Ethernet1")}]}),
-        "chk_conn_ping": ("anta.tests.connectivity", "VerifyReachability", {"hosts": [{"destination": st.session_state.get("param_conn_dest", "8.8.8.8")}]}),
+        "chk_conn_lldp": ("anta.tests.connectivity", "VerifyLLDPNeighbors", {"neighbors": [{"port": st.session_state.get("param_conn_lldp_port", "Ethernet1"), "neighbor_device": st.session_state.get("param_conn_lldp_dev", "switch2")}]}),
+        "chk_conn_ping": ("anta.tests.connectivity", "VerifyReachability", {"hosts": [{"destination": dest.strip()} for dest in st.session_state.get("param_conn_dest", "8.8.8.8").split(",") if dest.strip()]}),
 
         "chk_cvx_active": ("anta.tests.cvx", "VerifyActiveCVXConnections", None),
         "chk_cvx_cluster": ("anta.tests.cvx", "VerifyCVXClusterStatus", None),
@@ -571,7 +671,7 @@ with tab_catalog:
         "chk_cvx_client_mounts": ("anta.tests.cvx", "VerifyMcsClientMounts", None),
         "chk_cvx_server_mounts": ("anta.tests.cvx", "VerifyMcsServerMounts", None),
 
-        "chk_evpn_type5": ("anta.tests.evpn", "VerifyEVPNType5Routes", None),
+        "chk_evpn_type5": ("anta.tests.evpn", "VerifyEVPNType5Routes", {"prefixes": [{"address": st.session_state.get("param_evpn_prefix", "10.0.0.0/24"), "vni": int(st.session_state.get("param_evpn_vni", 10010))}]}),
         "chk_fn_fn44": ("anta.tests.field_notices", "VerifyFieldNotice44Resolution", None),
         "chk_fn_fn72": ("anta.tests.field_notices", "VerifyFieldNotice72Resolution", None),
         "chk_flow_tracking": ("anta.tests.flow_tracking", "VerifyHardwareFlowTrackerStatus", None),
@@ -596,6 +696,12 @@ with tab_catalog:
         "chk_hw_trans_optics": ("anta.tests.hardware", "VerifyTransceiversOptics", None),
         "chk_hw_pse": ("anta.tests.hardware", "VerifyPseStatus", None),
 
+        "chk_int_ipv4": ("anta.tests.interfaces", "VerifyInterfaceIPv4", {"interfaces": [{"name": st.session_state.get("param_int_v4_name", "Ethernet1"), "primary_ip": st.session_state.get("param_int_v4_ip", "10.0.0.1/24")}]}),
+        "chk_int_speed": ("anta.tests.interfaces", "VerifyInterfacesSpeed", {"interfaces": [{"name": st.session_state.get("param_int_speed_name", "Ethernet1"), "speed": int(st.session_state.get("param_int_speed_val", 10000))}]}),
+        "chk_int_status": ("anta.tests.interfaces", "VerifyInterfacesStatus", {"interfaces": [{"name": i.strip(), "status": "up"} for i in st.session_state.get("param_target_intfs_input", "Ethernet1").split(",") if i.strip()]}),
+        "chk_int_l2mtu": ("anta.tests.interfaces", "VerifyL2MTU", {"mtu": int(st.session_state.get("param_int_l2mtu_val", 9214))}),
+        "chk_int_l3mtu": ("anta.tests.interfaces", "VerifyL3MTU", {"mtu": int(st.session_state.get("param_int_l3mtu_val", 1500))}),
+
         "chk_sw_extensions": ("anta.tests.software", "VerifyEOSExtensions", None),
         "chk_sw_version": ("anta.tests.software", "VerifyEOSVersion", {"version": st.session_state.get("param_sw_ver", "4.30.2F")}),
         "chk_sw_terminattr": ("anta.tests.software", "VerifyTerminAttrVersion", None),
@@ -611,9 +717,18 @@ with tab_catalog:
         "chk_sys_ntp": ("anta.tests.system", "VerifyNTP", None),
         "chk_sys_ntp_assoc": ("anta.tests.system", "VerifyNTPAssociations", None),
         "chk_sys_reload": ("anta.tests.system", "VerifyReloadCause", None),
-        "chk_sys_uptime": ("anta.tests.system", "VerifyUptime", {"minimum": int(st.session_state.get("param_sys_uptime_val", 60))})
+        "chk_sys_uptime": ("anta.tests.system", "VerifyUptime", {"minimum": int(st.session_state.get("param_sys_uptime_val", 60))}),
+
+        "chk_mlag_reload_delay": ("anta.tests.mlag", "VerifyMlagReloadDelay", {"reload_delay": int(st.session_state.get("param_mlag_delay", 300)), "reload_delay_non_mlag": int(st.session_state.get("param_mlag_non_delay", 330))}),
+        "chk_bgp_peer_count": ("anta.tests.routing.bgp", "VerifyBGPPeerCount", {"address_families": [{"afi": "ipv4", "safi": "unicast", "vrf": st.session_state.get("param_bgp_cnt_vrf", "default"), "num_peers": int(st.session_state.get("param_bgp_cnt_num", 2))}]}),
+        "chk_bgp_specific_peers": ("anta.tests.routing.bgp", "VerifyBGPSpecificPeers", {"peers": [{"peer_address": st.session_state.get("param_bgp_spec_ip", "10.0.0.2"), "vrf": st.session_state.get("param_bgp_spec_vrf", "default"), "asn": int(st.session_state.get("param_bgp_spec_asn", 65000))}]}),
+        "chk_rt_nexthops": ("anta.tests.routing.generic", "VerifyIPv4RouteNextHops", {"route_entries": [{"prefix": st.session_state.get("param_rt_nh_prefix", "10.0.0.0/24"), "nexthops": [ip.strip() for ip in st.session_state.get("param_rt_nh_ips", "10.100.0.1").split(",") if ip.strip()]}]}),
+        "chk_rt_presence_prefix": ("anta.tests.routing.generic", "VerifyIPv4RoutePresencePerPrefix", {"prefixes": [p.strip() for p in st.session_state.get("param_rt_pres_prefixes", "10.0.0.0/24").split(",") if p.strip()]}),
+        "chk_rt_size": ("anta.tests.routing.generic", "VerifyRoutingTableSize", {"minimum": int(st.session_state.get("param_rt_sz_min", 1)), "maximum": int(st.session_state.get("param_rt_sz_max", 10000))}),
+        "chk_hostname": ("anta.tests.services", "VerifyHostname", {"hostname": st.session_state.get("param_service_hostname", "Switch-1")})
     }
 
+    # Map dynamic config rules if box is ticked
     if st.session_state.get("chk_cfg_rules") and st.session_state.get("cfg_rules_data"):
         cfg_rules_parsed = []
         for row in st.session_state.cfg_rules_data:
@@ -623,6 +738,7 @@ with tab_catalog:
         if cfg_rules_parsed:
             add_test("anta.tests.configuration", "VerifyRunningConfig", {"rules": cfg_rules_parsed})
 
+    # Loop through state and dynamically append configured tests
     for k, (mod, test_cls, params) in key_to_test_map.items():
         if st.session_state.get(k, False):
             add_test(mod, test_cls, params)
@@ -633,39 +749,213 @@ with tab_catalog:
     except Exception as e: st.error(f"Save error: {e}")
 
 # ==========================================
-# TAB 4: DASHBOARD
+# TAB 4: DASHBOARD (Runner)
 # ==========================================
 with tab_dashboard:
     st.subheader("Run Network Tests")
-    run_tags_input = st.text_input("🏷️ Filter NRFU Execution by Tags", placeholder="e.g. leaf, spine", key="input_run_tags")
+    
+    run_tags_input = st.text_input(
+        "🏷️ Filter NRFU Execution by Tags (Optional CLI Filter)", 
+        placeholder="e.g. leaf, spine",
+        key="input_run_tags",
+        help="Applies '--tags' to the CLI execution to run tests only on devices/tests with matching tags."
+    )
     
     if st.button("🚀 Execute Tests", type="primary", use_container_width=True):
         os.environ["ANTA_USERNAME"] = st.session_state.anta_user
         os.environ["ANTA_PASSWORD"] = st.session_state.anta_pass
         
-        with st.spinner("Running tests..."):
-            cmd = ["anta", "nrfu", "--inventory", "inventory.yml", "--catalog", "catalog.yml", "--ignore-status", "json"]
-            if run_tags_input.strip(): cmd.extend(["--tags", run_tags_input.strip()])
+        with st.spinner("Connecting to switches and running tests... Please wait."):
+            cmd = ["anta", "nrfu"]
+            if run_tags_input.strip():
+                cmd.extend(["--tags", run_tags_input.strip()])
+            cmd.extend(["--inventory", "inventory.yml", "--catalog", "catalog.yml", "--ignore-status", "json"])
             
             result = subprocess.run(cmd, capture_output=True, text=True)
-            output_clean = re.sub(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])', '', result.stdout)
+            output = result.stdout
+            stderr_output = result.stderr or ""
+            
+            ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
+            output_clean = ansi_escape.sub('', output)
+            stderr_clean = ansi_escape.sub('', stderr_output)
+            full_log = output_clean + "\n" + stderr_clean
             
             try:
-                start_idx, end_idx = output_clean.find('['), output_clean.rfind(']')
+                json_raw_string = output_clean
+                if "JSON results" in output_clean:
+                    json_raw_string = output_clean.split("JSON results")[-1]
+                
+                start_idx = json_raw_string.find('[')
+                end_idx = json_raw_string.rfind(']')
+                
+                data = []
                 if start_idx != -1 and end_idx != -1:
-                    df = pd.DataFrame(json.loads(output_clean[start_idx:end_idx+1]))
-                    st.dataframe(df, use_container_width=True)
+                    try:
+                        data = json.loads(json_raw_string[start_idx:end_idx+1])
+                    except json.JSONDecodeError:
+                        pass
+                
+                if "ValidationError" in full_log or "CRITICAL Failed to parse the catalog" in full_log:
+                    st.error("🚨 **Catalog Validation Error (ValidationError)**\nOne of the selected tests requires additional parameters or has invalid inputs. Expand the log below to see which test failed validation.")
+                    with st.expander("View Validation Error Details", expanded=True):
+                        st.code(full_log, language=None)
+                
+                elif "No tests scheduled to run" in full_log:
+                    st.warning("⚠️ **Notice:** ANTA skipped running tests because a tag filter in the catalog or execution filter does not match any device in Inventory.")
+                
+                elif not data:
+                    st.error("No test results received from ANTA. Please ensure tests are selected and tag filters are correct.")
+                    with st.expander("View Full Raw Output"):
+                        st.code(full_log, language=None)
                 else:
-                    st.error("No JSON output received.")
-                    st.code(output_clean)
+                    df = pd.DataFrame(data)
+                    
+                    if 'messages' in df.columns:
+                        df['messages'] = df['messages'].apply(lambda x: ", ".join(x) if isinstance(x, list) else x)
+                    
+                    total_tests = len(df)
+                    passed = len(df[df['result'] == 'success'])
+                    failed = len(df[df['result'] == 'failure'])
+                    error = len(df[df['result'] == 'error']) if 'error' in df['result'].values else 0
+                    skipped = len(df[df['result'] == 'skipped']) if 'skipped' in df['result'].values else 0
+                    
+                    st.subheader("📊 Test Summary")
+                    col1, col2, col3, col4 = st.columns(4)
+                    col1.metric("Total Tests", total_tests)
+                    col2.metric("✅ Passed", passed)
+                    col3.metric("❌ Failed", failed)
+                    col4.metric("🚨 Error / Exception", error)
+                    
+                    st.divider()
+                    display_cols = ['name', 'categories', 'description', 'result', 'messages']
+                    df_display = df[[col for col in display_cols if col in df.columns]].copy()
+                    
+                    df_display['full_message'] = df_display['messages']
+                    df_display['messages'] = df_display['messages'].apply(
+                        lambda x: (str(x)[:60] + '...') if isinstance(x, str) and len(str(x)) > 60 else x
+                    )
+                    
+                    def color_result(val):
+                        if val == 'success': return 'color: #28a745; font-weight: bold'
+                        elif val in ['failure', 'error']: return 'color: #dc3545; font-weight: bold'
+                        return 'color: #ffc107; font-weight: bold'
+                    
+                    styled_df = df_display.drop(columns=['full_message']).style.map(color_result, subset=['result'])
+                    st.dataframe(styled_df, use_container_width=True)
+                    
+                    failed_df = df_display[df_display['result'].isin(['failure', 'error'])]
+                    if not failed_df.empty:
+                        st.divider()
+                        st.subheader("🔍 Failed Tests Details (Grouped by Switch)")
+                        st.markdown("Click on a switch below to expand and view all of its failing tests.")
+                        
+                        grouped = failed_df.groupby('name')
+                        for device_name, device_failures in grouped:
+                            fail_count = len(device_failures)
+                            expander_label = f"❌ **{device_name}** ({fail_count} failed test{'s' if fail_count > 1 else ''})"
+                            
+                            with st.expander(expander_label):
+                                for idx, (_, row) in enumerate(device_failures.iterrows(), start=1):
+                                    test_desc = row.get('description') or row.get('categories') or f"Test #{idx}"
+                                    if isinstance(test_desc, list):
+                                        test_desc = ", ".join(test_desc)
+                                        
+                                    st.markdown(f"#### {idx}. {test_desc}")
+                                    if 'categories' in row and pd.notna(row['categories']):
+                                        cat_display = ", ".join(row['categories']) if isinstance(row['categories'], list) else row['categories']
+                                        st.caption(f"**Category:** {cat_display}")
+                                    st.error(row['full_message'])
+                                    if idx < fail_count:
+                                        st.divider()
             except Exception as e:
-                st.error(f"Parsing error: {e}")
+                st.error(f"Error parsing results: {e}")
+                with st.expander("View Full Raw Output"):
+                    st.code(full_log, language=None)
 
 # ==========================================
-# TAB 5: RAW CLI
+# TAB 5: RAW CLI (Custom Commands)
 # ==========================================
 with tab_cli:
     st.subheader("🛠️ Raw EOS Command Runner")
-    cmd_input = st.text_input("Enter EOS Command", value="show mac address-table", key="input_cli_command")
-    if st.button("Run Command", type="primary"):
-        st.info("Executing debug run-cmd...")
+    st.markdown("Use this tab to run ad-hoc commands on a specific device.")
+    
+    try:
+        with open("inventory.yml", "r") as f:
+            inv_data = yaml.safe_load(f) or {}
+        hosts = inv_data.get("anta_inventory", {}).get("hosts", [])
+        
+        device_map = {}
+        for host in hosts:
+            h_ip = host.get("host")
+            h_name = host.get("name")
+            if h_ip:
+                anta_id = h_name if h_name else h_ip
+                label = f"{h_name} ({h_ip})" if h_name else h_ip
+                device_map[label] = anta_id
+    except Exception:
+        device_map = {}
+        
+    if not device_map:
+        st.warning("No explicit hosts found for CLI execution. Please define hosts in 'Manage Inventory' tab.")
+    else:
+        options_list = list(device_map.keys())
+        saved_label = saved_settings.get("default_cli_device_label", "")
+        default_index = options_list.index(saved_label) if saved_label in options_list else 0
+        
+        selected_label = st.selectbox("Select Device", options=options_list, index=default_index, key="select_cli_device")
+        selected_device_id = device_map[selected_label]
+        
+        cmd_input = st.text_input("Enter EOS Command", value="show mac address-table", key="input_cli_command")
+        
+        if st.button("Run Command", type="primary"):
+            save_settings({"default_cli_device_label": selected_label})
+            os.environ["ANTA_USERNAME"] = st.session_state.anta_user
+            os.environ["ANTA_PASSWORD"] = st.session_state.anta_pass
+            
+            with st.spinner(f"Running '{cmd_input}' on {selected_label}..."):
+                exec_cmd = [
+                    "anta", "debug", "run-cmd", 
+                    "--command", cmd_input,
+                    "--inventory", "inventory.yml",
+                    "--device", selected_device_id
+                ]
+                
+                result = subprocess.run(exec_cmd, capture_output=True, text=True)
+                
+                if result.returncode == 0:
+                    st.success(f"Command executed successfully on {selected_label}!")
+                    
+                    try:
+                        parsed_json = json.loads(result.stdout)
+                        
+                        def find_tables(d, found=None):
+                            if found is None: found = {}
+                            if isinstance(d, dict):
+                                for k, v in d.items():
+                                    if isinstance(v, list) and len(v) > 0 and isinstance(v[0], dict):
+                                        found[k] = v
+                                    else:
+                                        find_tables(v, found)
+                            elif isinstance(d, list):
+                                for item in d:
+                                    find_tables(item, found)
+                            return found
+                        
+                        tables = find_tables(parsed_json)
+                        
+                        if tables:
+                            st.markdown("#### 📊 Extracted Tables")
+                            for table_name, table_data in tables.items():
+                                with st.expander(f"View '{table_name}'", expanded=True):
+                                    st.dataframe(pd.DataFrame(table_data), use_container_width=True)
+                                    
+                        st.markdown("#### 📄 Full Clean Text Output")
+                        clean_text = yaml.dump(parsed_json, default_flow_style=False, sort_keys=False)
+                        st.code(clean_text, language=None)
+
+                    except Exception:
+                        st.markdown("#### 📄 Raw Text Output")
+                        st.code(result.stdout, language=None)
+                else:
+                    st.error("Error executing command.")
+                    st.code(result.stderr or result.stdout, language=None)
