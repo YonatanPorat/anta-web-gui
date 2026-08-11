@@ -33,7 +33,7 @@ saved_settings = load_settings()
 ALL_TEST_KEYS = [
     "chk_hw_trans", "chk_hw_cool", "chk_hw_power", "chk_hw_temp", "chk_hw_trans_presence", "chk_hw_trans_optics", "chk_hw_pse",
     "chk_sys_uptime", "chk_sys_ntp", "chk_sys_coredump", "chk_sys_reload", "chk_sys_cpu", "chk_sys_mem",
-    "chk_sw_version", "chk_sw_bootloader",
+    "chk_sw_version", "chk_sw_bootloader", "chk_sw_terminattr",
     "chk_aaa_authen", "chk_aaa_authz", "chk_aaa_acct_default", "chk_aaa_acct_console",
     "chk_aaa_tacacs_src", "chk_aaa_tacacs_servers", "chk_aaa_tacacs_groups",
     "chk_aaa_radius_src", "chk_aaa_radius_servers",
@@ -46,8 +46,8 @@ ALL_TEST_KEYS = [
     "chk_int_trident", "chk_int_voq", "chk_int_vrrp_mac", "chk_int_l2mtu",
     "chk_int_l3mtu", "chk_int_loopback", "chk_int_port_channel",
     "chk_int_svi", "chk_int_storm", "chk_int_ipv4",
-    "chk_rt_model", "chk_rt_status", "chk_rt_size", "chk_rt_presence",
-    "chk_bgp_health", "chk_stp_blocked", "chk_stp_tc", "chk_stp_root", "chk_stp_mode",
+    "chk_rt_model", "chk_rt_status", "chk_rt_size", "chk_rt_presence", "chk_rt_v6_presence", "chk_rt_bfd",
+    "chk_bgp_health", "chk_bgp_specific_peers", "chk_stp_blocked", "chk_stp_tc", "chk_stp_root", "chk_stp_mode",
     "chk_evpn_type5", "chk_vxlan_intf", "chk_vxlan_sanity", "chk_vtep_peers",
     "chk_mlag_status", "chk_mlag_interfaces", "chk_mlag_config_sanity", "chk_mlag_reload_delay",
     "chk_igmp_snooping_global", "chk_igmp_snooping_vlans",
@@ -347,7 +347,7 @@ with tab_inventory:
         yaml.safe_dump(new_inv_dict, f, sort_keys=False)
 
 # ==========================================
-# TAB 3: CATALOG BUILDER (Sleek Clean Layout)
+# TAB 3: CATALOG BUILDER
 # ==========================================
 with tab_catalog:
     st.subheader("📋 Test Catalog Builder")
@@ -443,14 +443,18 @@ with tab_catalog:
             chk_sys_mem = bind_checkbox("Verify Memory Utilization (`VerifyMemoryUtilization`)", key="chk_sys_mem")
             st.number_input("Max Allowed Memory Utilization (%)", value=st.session_state.get("param_sys_mem_val", 80), min_value=1, max_value=100, key="param_sys_mem_val", disabled=not chk_sys_mem)
 
-        # 3. SOFTWARE
+        # 3. SOFTWARE (UPDATED WITH TERMINATTR)
         elif selected_cat == "Software":
             chk_sw_version = bind_checkbox("Verify EOS Version (`VerifyEOSVersion`)", key="chk_sw_version")
-            st.text_input("Expected EOS Version (e.g. 4.30.2F)", value=st.session_state.get("param_sw_version_val", "4.30.2F"), key="param_sw_version_val", disabled=not chk_sw_version)
+            st.text_input("Expected EOS Version", value=st.session_state.get("param_sw_version_val", "4.30.2F"), key="param_sw_version_val", disabled=not chk_sw_version)
 
             st.divider()
             chk_sw_bootloader = bind_checkbox("Verify Bootloader Version (`VerifyBootloaderVersion`)", key="chk_sw_bootloader")
             st.text_input("Expected Bootloader Version", value=st.session_state.get("param_sw_bootloader_val", ""), key="param_sw_bootloader_val", disabled=not chk_sw_bootloader)
+
+            st.divider()
+            chk_sw_terminattr = bind_checkbox("Verify TerminAttr Daemon Version (`VerifyTerminAttrVersion`)", key="chk_sw_terminattr")
+            st.text_input("Expected TerminAttr Version (e.g. 1.28.0)", value=st.session_state.get("param_sw_terminattr_val", "1.28.0"), key="param_sw_terminattr_val", disabled=not chk_sw_terminattr)
 
         # 4. AAA
         elif selected_cat == "AAA":
@@ -594,7 +598,7 @@ with tab_catalog:
                 bind_checkbox("Verify SVI", key="chk_int_svi")
                 bind_checkbox("Verify Storm Control Drops", key="chk_int_storm")
 
-        # 8. ROUTING GENERIC
+        # 8. ROUTING GENERIC (UPDATED WITH BFD & IPV6 ROUTE PRESENCE)
         elif selected_cat == "Routing Generic":
             chk_rt_model = bind_checkbox("Verify Routing Protocol Model (`VerifyRoutingProtocolModel`)", key="chk_rt_model")
             st.selectbox("Protocol Model", ["multi-agent", "ribd"], key="param_rt_model_val", disabled=not chk_rt_model)
@@ -614,12 +618,28 @@ with tab_catalog:
             with c_rp1: st.text_input("Route Prefix", value=st.session_state.get("param_rt_prefix", "10.0.0.0/24"), key="param_rt_prefix", disabled=not chk_rt_presence)
             with c_rp2: st.text_input("VRF (Route Presence)", value=st.session_state.get("param_rt_vrf", "default"), key="param_rt_vrf", disabled=not chk_rt_presence)
 
-        # 9. ROUTING BGP
+            st.divider()
+            chk_rt_v6_presence = bind_checkbox("Verify IPv6 Route Presence (`VerifyIPv6RoutePresencePerVRF`)", key="chk_rt_v6_presence")
+            c_r6_1, c_r6_2 = st.columns(2)
+            with c_r6_1: st.text_input("IPv6 Prefix", value=st.session_state.get("param_rt_v6_prefix", "2001:db8::/32"), key="param_rt_v6_prefix", disabled=not chk_rt_v6_presence)
+            with c_r6_2: st.text_input("IPv6 VRF", value=st.session_state.get("param_rt_v6_vrf", "default"), key="param_rt_v6_vrf", disabled=not chk_rt_v6_presence)
+
+            st.divider()
+            bind_checkbox("Verify BFD Single Hop Counters (`VerifyBFDSingleHopCounters`)", key="chk_rt_bfd")
+
+        # 9. ROUTING BGP (UPDATED WITH SPECIFIC PEERS)
         elif selected_cat == "Routing BGP":
             chk_bgp_health = bind_checkbox("Verify BGP Peers Health (`VerifyBGPPeersHealth`)", key="chk_bgp_health")
             st.text_input("BGP VRF", value=st.session_state.get("param_bgp_vrf", "default"), key="param_bgp_vrf", disabled=not chk_bgp_health)
 
-        # 10. STP (UPDATED WITH ROOT & MODE)
+            st.divider()
+            chk_bgp_specific_peers = bind_checkbox("Verify BGP Specific Peers (`VerifyBGPSpecificPeers`)", key="chk_bgp_specific_peers")
+            c_bgp1, c_bgp2, c_bgp3 = st.columns(3)
+            with c_bgp1: st.text_input("Peer Neighbor IP", value=st.session_state.get("param_bgp_peer_ip", "10.0.0.2"), key="param_bgp_peer_ip", disabled=not chk_bgp_specific_peers)
+            with c_bgp2: st.text_input("Peer VRF", value=st.session_state.get("param_bgp_peer_vrf", "default"), key="param_bgp_peer_vrf", disabled=not chk_bgp_specific_peers)
+            with c_bgp3: st.text_input("Expected Remote AS", value=st.session_state.get("param_bgp_peer_asn", "65000"), key="param_bgp_peer_asn", disabled=not chk_bgp_specific_peers)
+
+        # 10. STP
         elif selected_cat == "STP":
             bind_checkbox("Verify STP Blocked Ports (`VerifySTPBlockedPorts`)", key="chk_stp_blocked")
             
@@ -635,7 +655,7 @@ with tab_catalog:
             chk_stp_mode = bind_checkbox("Verify STP Operating Mode (`VerifySTPMode`)", key="chk_stp_mode")
             st.selectbox("Expected STP Mode", ["mstp", "rapid-pvst", "pvst"], key="param_stp_mode_val", disabled=not chk_stp_mode)
 
-        # 11. EVPN & VXLAN (UPDATED WITH VTEP PEERS)
+        # 11. EVPN & VXLAN
         elif selected_cat == "EVPN & VXLAN":
             chk_evpn_type5 = bind_checkbox("Verify EVPN Type 5 Routes (`VerifyEVPNType5Routes`)", key="chk_evpn_type5")
             c_ev1, c_ev2 = st.columns(2)
@@ -770,7 +790,7 @@ with tab_catalog:
         elif selected_cat == "Path Selection":
             bind_checkbox("Verify Path Selection Health (`VerifyPathsHealth`)", key="chk_path_sel_health")
 
-        # 21. SNMP (UPDATED WITH COMMUNITY)
+        # 21. SNMP
         elif selected_cat == "SNMP":
             chk_snmp_status = bind_checkbox("Verify SNMP Status (`VerifySnmpStatus`)", key="chk_snmp_status")
             st.text_input("SNMP VRF", value=st.session_state.get("param_snmp_vrf", "default"), key="param_snmp_vrf", disabled=not chk_snmp_status)
@@ -779,7 +799,7 @@ with tab_catalog:
             chk_snmp_community = bind_checkbox("Verify SNMP Communities (`VerifySnmpCommunity`)", key="chk_snmp_community")
             st.text_input("Expected SNMP Community Names (comma-separated)", value=st.session_state.get("param_snmp_communities", "public, private"), key="param_snmp_communities", disabled=not chk_snmp_community)
 
-        # 22. VLAN (UPDATED WITH VLANS STATUS)
+        # 22. VLAN
         elif selected_cat == "VLAN":
             chk_vlan_internal = bind_checkbox("Verify VLAN Internal Allocation Policy (`VerifyVlanInternalPolicy`)", key="chk_vlan_internal")
             st.selectbox("Allocation Policy", ["ascending", "descending"], key="param_vlan_alloc_policy", disabled=not chk_vlan_internal)
@@ -845,6 +865,8 @@ with tab_catalog:
     if st.session_state.get("chk_sw_bootloader", False):
         b_val = st.session_state.get("param_sw_bootloader_val", "").strip()
         if b_val: add_test("anta.tests.software", {"VerifyBootloaderVersion": {"version": b_val}})
+    if st.session_state.get("chk_sw_terminattr", False):
+        add_test("anta.tests.software", {"VerifyTerminAttrVersion": {"version": st.session_state.get("param_sw_terminattr_val", "1.28.0")}})
 
     # AAA
     if st.session_state.get("chk_aaa_authen", False): add_test("anta.tests.aaa", {"VerifyAuthenMethods": {"methods": [st.session_state.get("param_aaa_method", "local")], "types": [st.session_state.get("param_aaa_type", "login")]}})
@@ -936,7 +958,13 @@ with tab_catalog:
     if st.session_state.get("chk_rt_status", False): add_test("anta.tests.routing.generic", {"VerifyRoutingStatus": {"ipv4_unicast": True}})
     if st.session_state.get("chk_rt_size", False): add_test("anta.tests.routing.generic", {"VerifyRoutingTableSize": {"minimum": int(st.session_state.get("param_rt_size_min", 1)), "maximum": int(st.session_state.get("param_rt_size_max", 1000))}})
     if st.session_state.get("chk_rt_presence", False): add_test("anta.tests.routing.generic", {"VerifyIPv4RoutePresencePerVRF": {"route_entries": [{"prefix": st.session_state.get("param_rt_prefix", "10.0.0.0/24"), "vrf": st.session_state.get("param_rt_vrf", "default")}]}})
+    if st.session_state.get("chk_rt_v6_presence", False): add_test("anta.tests.routing.generic", {"VerifyIPv6RoutePresencePerVRF": {"route_entries": [{"prefix": st.session_state.get("param_rt_v6_prefix", "2001:db8::/32"), "vrf": st.session_state.get("param_rt_v6_vrf", "default")}]}})
+    if st.session_state.get("chk_rt_bfd", False): add_test("anta.tests.routing.generic", {"VerifyBFDSingleHopCounters": None})
     if st.session_state.get("chk_bgp_health", False): add_test("anta.tests.routing.bgp", {"VerifyBGPPeersHealth": {"address_families": [{"afi": "ipv4", "safi": "unicast", "vrf": st.session_state.get("param_bgp_vrf", "default")}]}})
+    if st.session_state.get("chk_bgp_specific_peers", False):
+        try: asn_val = int(st.session_state.get("param_bgp_peer_asn", 65000))
+        except ValueError: asn_val = 65000
+        add_test("anta.tests.routing.bgp", {"VerifyBGPSpecificPeers": {"peers": [{"peer_address": st.session_state.get("param_bgp_peer_ip", "10.0.0.2"), "vrf": st.session_state.get("param_bgp_peer_vrf", "default"), "asn": asn_val}]}})
     
     # STP
     if st.session_state.get("chk_stp_blocked", False): add_test("anta.tests.stp", {"VerifySTPBlockedPorts": None})
