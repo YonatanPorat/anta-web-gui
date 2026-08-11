@@ -279,12 +279,7 @@ with tab_catalog:
                 st.text_input("TACACS Group Names (comma-separated)", value=st.session_state.get("param_aaa_tacacs_groups_val", "TACACS-SERVERS"), key="param_aaa_tacacs_groups_val")
 
             bind_cb("Verify RADIUS Source Intf (`VerifyRadiusSourceIntf`)", "chk_aaa_radius_src")
-            if st.session_state.get("chk_aaa_radius_src"):
-                st.text_input("RADIUS Source Interface", value=st.session_state.get("param_aaa_radius_intf", "Management1"), key="param_aaa_radius_intf")
-
             bind_cb("Verify RADIUS Servers (`VerifyRadiusServers`)", "chk_aaa_radius_servers")
-            if st.session_state.get("chk_aaa_radius_servers"):
-                st.text_input("RADIUS Server IPs (comma-separated)", value=st.session_state.get("param_aaa_radius_ips", "10.2.2.1"), key="param_aaa_radius_ips")
 
         elif selected_cat == "AVT_BFD":
             bind_cb("Verify AVT Path Health (`VerifyAVTPathHealth`)", "chk_avt_path")
@@ -294,15 +289,31 @@ with tab_catalog:
                 st.selectbox("AVT Role", ["edge", "core", "path-finder"], key="param_avt_role_val")
                 
             bind_cb("Verify AVT Specific Path (`VerifyAVTSpecificPath`)", "chk_avt_specific_path")
+            if st.session_state.get("chk_avt_specific_path"):
+                col1, col2 = st.columns(2)
+                with col1: st.text_input("AVT Path Destination", value=st.session_state.get("param_avt_spec_dest", "10.0.0.1"), key="param_avt_spec_dest")
+                with col2: st.text_input("AVT Path VRF", value=st.session_state.get("param_avt_spec_vrf", "default"), key="param_avt_spec_vrf")
+
             st.divider()
             bind_cb("Verify BFD Peers Health (`VerifyBFDPeersHealth`)", "chk_bfd_health")
+            
             bind_cb("Verify BFD Peers Intervals (`VerifyBFDPeersIntervals`)", "chk_bfd_intervals")
-            bind_cb("Verify BFD Reg Protocols (`VerifyBFDPeersRegProtocols`)", "chk_bfd_protocols")
-            bind_cb("Verify BFD Specific Peers (`VerifyBFDSpecificPeers`)", "chk_bfd_specific")
-            if st.session_state.get("chk_bfd_specific"):
+            if st.session_state.get("chk_bfd_intervals"):
                 col1, col2 = st.columns(2)
                 with col1: st.text_input("BFD Peer Address", value=st.session_state.get("param_bfd_peer_ip", "10.0.0.1"), key="param_bfd_peer_ip")
                 with col2: st.text_input("BFD Peer VRF", value=st.session_state.get("param_bfd_peer_vrf", "default"), key="param_bfd_peer_vrf")
+
+            bind_cb("Verify BFD Reg Protocols (`VerifyBFDPeersRegProtocols`)", "chk_bfd_protocols")
+            if st.session_state.get("chk_bfd_protocols"):
+                col1, col2 = st.columns(2)
+                with col1: st.text_input("BFD Reg Protocol Address", value=st.session_state.get("param_bfd_proto_ip", "10.0.0.1"), key="param_bfd_proto_ip")
+                with col2: st.text_input("BFD Reg Protocol VRF", value=st.session_state.get("param_bfd_proto_vrf", "default"), key="param_bfd_proto_vrf")
+
+            bind_cb("Verify BFD Specific Peers (`VerifyBFDSpecificPeers`)", "chk_bfd_specific")
+            if st.session_state.get("chk_bfd_specific"):
+                col1, col2 = st.columns(2)
+                with col1: st.text_input("BFD Specific Peer Address", value=st.session_state.get("param_bfd_spec_ip", "10.0.0.1"), key="param_bfd_spec_ip")
+                with col2: st.text_input("BFD Specific Peer VRF", value=st.session_state.get("param_bfd_spec_vrf", "default"), key="param_bfd_spec_vrf")
 
         elif selected_cat == "Configuration":
             st.markdown("##### Dynamic Running Config Rules (`VerifyRunningConfig`)")
@@ -488,7 +499,7 @@ with tab_catalog:
             bind_cb("Verify Specific Path (`VerifySpecificPath`)", "chk_path_sel_specific")
             st.divider()
             bind_cb("Verify TCAM Profile (`VerifyTcamProfile`)", "chk_tcam_profile")
-            bind_cb("Verify UFT Mode (`VerifyUnifiedForwardingTableMode`)", "chk_uft_mode")
+            bind_cb("Verify Unified Forwarding Table Mode (`VerifyUnifiedForwardingTableMode`)", "chk_uft_mode")
 
         elif selected_cat == "PTP":
             bind_cb("Verify PTP Grandmaster (`VerifyPtpGMStatus`)", "chk_ptp_gm")
@@ -722,7 +733,7 @@ with tab_catalog:
         if parsed_tags: body["filters"] = {"tags": parsed_tags}
         catalog_dict[module].append({test_name: body if body else None})
 
-    # Key to Module & Test Class mappings with complete default structures
+    # Key to Module & Test Class mappings
     key_to_test_map = {
         "chk_aaa_authen": ("anta.tests.aaa", "VerifyAuthenMethods", {
             "methods": [m.strip() for m in st.session_state.get("param_aaa_authen_methods", "local").split(",") if m.strip()],
@@ -748,11 +759,11 @@ with tab_catalog:
         
         "chk_avt_path": ("anta.tests.avt", "VerifyAVTPathHealth", None),
         "chk_avt_role": ("anta.tests.avt", "VerifyAVTRole", {"role": st.session_state.get("param_avt_role_val", "edge")}),
-        "chk_avt_specific_path": ("anta.tests.avt", "VerifyAVTSpecificPath", None),
+        "chk_avt_specific_path": ("anta.tests.avt", "VerifyAVTSpecificPath", {"avt_paths": [{"destination": st.session_state.get("param_avt_spec_dest", "10.0.0.1"), "vrf": st.session_state.get("param_avt_spec_vrf", "default")}]}),
         "chk_bfd_health": ("anta.tests.bfd", "VerifyBFDPeersHealth", None),
-        "chk_bfd_intervals": ("anta.tests.bfd", "VerifyBFDPeersIntervals", None),
-        "chk_bfd_protocols": ("anta.tests.bfd", "VerifyBFDPeersRegProtocols", None),
-        "chk_bfd_specific": ("anta.tests.bfd", "VerifyBFDSpecificPeers", {"peers": [{"peer_address": st.session_state.get("param_bfd_peer_ip", "10.0.0.1"), "vrf": st.session_state.get("param_bfd_peer_vrf", "default")}]}),
+        "chk_bfd_intervals": ("anta.tests.bfd", "VerifyBFDPeersIntervals", {"bfd_peers": [{"peer_address": st.session_state.get("param_bfd_peer_ip", "10.0.0.1"), "vrf": st.session_state.get("param_bfd_peer_vrf", "default")}]}),
+        "chk_bfd_protocols": ("anta.tests.bfd", "VerifyBFDPeersRegProtocols", {"bfd_peers": [{"peer_address": st.session_state.get("param_bfd_proto_ip", "10.0.0.1"), "vrf": st.session_state.get("param_bfd_proto_vrf", "default")}]}),
+        "chk_bfd_specific": ("anta.tests.bfd", "VerifyBFDSpecificPeers", {"bfd_peers": [{"peer_address": st.session_state.get("param_bfd_spec_ip", "10.0.0.1"), "vrf": st.session_state.get("param_bfd_spec_vrf", "default")}]}),
 
         "chk_cfg_diff": ("anta.tests.configuration", "VerifyRunningConfigDiffs", None),
         "chk_cfg_lines": ("anta.tests.configuration", "VerifyRunningConfigLines", {"regex_patterns": [l.strip() for l in st.session_state.get("param_cfg_lines_regex", "router bgp").split(",") if l.strip()]}),
@@ -875,7 +886,7 @@ with tab_catalog:
         if st.session_state.get(k, False):
             add_test(mod, test_cls, params)
 
-    # --- PER-TEST PRE-VALIDATION LOGIC (DETAILED TRACE IN DASHBOARD) ---
+    # --- PER-TEST PRE-VALIDATION LOGIC (FULL DETAILED TRACE) ---
     valid_catalog_dict = {}
     invalid_config_results = []
 
@@ -892,13 +903,14 @@ with tab_catalog:
                 
             except Exception as err:
                 test_cls_name = list(test_entry.keys())[0] if isinstance(test_entry, dict) else str(test_entry)
+                full_error_text = str(err)
                 
                 invalid_config_results.append({
                     "name": "Catalog Pre-Validator",
                     "categories": [module_name],
                     "description": f"{test_cls_name} (Invalid Config/Missing Parameters)",
                     "result": "error",
-                    "messages": [str(err)]
+                    "messages": [full_error_text]
                 })
 
     try:
