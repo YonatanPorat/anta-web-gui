@@ -50,8 +50,8 @@ ALL_TEST_KEYS = [
     # Hardware
     "chk_hw_linecards", "chk_hw_drops", "chk_hw_chassis", "chk_hw_cooling_fans", "chk_hw_power",
     "chk_hw_sys_cooling", "chk_hw_capacity", "chk_hw_inventory", "chk_hw_module", "chk_hw_pcie",
-    "chk_hw_supervisor", "chk_hw_temp", "chk_hw_trans", "chk_hw_trans_temp", "chk_hw_trans_presence",
-    "chk_hw_trans_optics", "chk_hw_pse",
+    "chk_hw_supervisor", "chk_hw_temp", "chk_hw_trans", "chk_hw_trans_temp",
+    "chk_hw_trans_optics",
     # Interfaces
     "chk_int_proxy_arp", "chk_int_ill_lacp", "chk_int_disc", "chk_int_err_dis", "chk_int_err",
     "chk_int_ipv4", "chk_int_util", "chk_int_ber", "chk_int_counter_det", "chk_int_ecn",
@@ -286,20 +286,23 @@ with tab_catalog:
                 
             bind_cb("Verify AVT Specific Path (`VerifyAVTSpecificPath`)", "chk_avt_specific_path")
             if st.session_state.get("chk_avt_specific_path"):
-                col1, col2 = st.columns(2)
-                with col1: st.text_input("AVT Path Destination", value=st.session_state.get("param_avt_spec_dest", "10.0.0.1"), key="param_avt_spec_dest")
-                with col2: st.text_input("AVT Path VRF", value=st.session_state.get("param_avt_spec_vrf", "default"), key="param_avt_spec_vrf")
+                col1, col2, col3, col4 = st.columns(4)
+                with col1: st.text_input("AVT Name", value=st.session_state.get("param_avt_spec_name", "AVT1"), key="param_avt_spec_name")
+                with col2: st.text_input("Destination IP", value=st.session_state.get("param_avt_spec_dest", "10.0.0.1"), key="param_avt_spec_dest")
+                with col3: st.text_input("Next Hop IP", value=st.session_state.get("param_avt_spec_next_hop", "10.0.0.2"), key="param_avt_spec_next_hop")
+                with col4: st.text_input("VRF", value=st.session_state.get("param_avt_spec_vrf", "default"), key="param_avt_spec_vrf")
 
             st.divider()
             bind_cb("Verify BFD Peers Health (`VerifyBFDPeersHealth`)", "chk_bfd_health")
             
             bind_cb("Verify BFD Peers Intervals (`VerifyBFDPeersIntervals`)", "chk_bfd_intervals")
             if st.session_state.get("chk_bfd_intervals"):
-                col1, col2, col3, col4 = st.columns(4)
+                col1, col2, col3, col4, col5 = st.columns(5)
                 with col1: st.text_input("BFD Peer Address", value=st.session_state.get("param_bfd_int_ip", "10.0.0.1"), key="param_bfd_int_ip")
                 with col2: st.text_input("BFD Peer VRF", value=st.session_state.get("param_bfd_int_vrf", "default"), key="param_bfd_int_vrf")
                 with col3: st.number_input("Tx Interval (ms)", value=st.session_state.get("param_bfd_tx", 300), key="param_bfd_tx")
                 with col4: st.number_input("Rx Interval (ms)", value=st.session_state.get("param_bfd_rx", 300), key="param_bfd_rx")
+                with col5: st.number_input("Multiplier", value=st.session_state.get("param_bfd_mult", 3), key="param_bfd_mult")
 
             bind_cb("Verify BFD Reg Protocols (`VerifyBFDPeersRegProtocols`)", "chk_bfd_protocols")
             if st.session_state.get("chk_bfd_protocols"):
@@ -416,12 +419,7 @@ with tab_catalog:
                 st.text_input("Expected Manufacturers (comma-separated)", value=st.session_state.get("param_hw_mfg", "Arista Networks, ARISTA"), key="param_hw_mfg")
             
             bind_cb("Verify Transceivers Temperature (`VerifyTransceiversTemperature`)", "chk_hw_trans_temp")
-            bind_cb("Verify Transceivers Presence (`VerifyTransceiversPresence`)", "chk_hw_trans_presence")
-            if st.session_state.get("chk_hw_trans_presence"):
-                st.text_input("Transceivers Interfaces (comma-separated)", value=st.session_state.get("param_hw_trans_pres_intf", "Ethernet1"), key="param_hw_trans_pres_intf")
-
             bind_cb("Verify Transceivers Optics (`VerifyTransceiversOptics`)", "chk_hw_trans_optics")
-            bind_cb("Verify PSE Status (`VerifyPseStatus`)", "chk_hw_pse")
 
         elif selected_cat == "Interfaces":
             bind_cb("Verify Proxy ARP (`VerifyIPProxyARP`)", "chk_int_proxy_arp")
@@ -449,7 +447,7 @@ with tab_catalog:
             if st.session_state.get("chk_int_speed"):
                 col1, col2 = st.columns(2)
                 with col1: st.text_input("Speed Intf Name", value=st.session_state.get("param_int_speed_name", "Ethernet1"), key="param_int_speed_name")
-                with col2: st.number_input("Expected Speed (Mbps)", value=st.session_state.get("param_int_speed_val", 10000), key="param_int_speed_val")
+                with col2: st.number_input("Expected Speed (Mbps)", value=st.session_state.get("param_int_speed_val", 1000), key="param_int_speed_val")
 
             bind_cb("Verify Interfaces Status (`VerifyInterfacesStatus`)", "chk_int_status")
             if st.session_state.get("chk_int_status"):
@@ -606,7 +604,10 @@ with tab_catalog:
             
             bind_cb("Verify IPv4 ACL (`VerifyIPv4ACL`)", "chk_sec_v4_acl")
             if st.session_state.get("chk_sec_v4_acl"):
-                st.text_input("IPv4 Access List Name", value=st.session_state.get("param_sec_v4_acl_name", "ACL-MGMT"), key="param_sec_v4_acl_name")
+                col1, col2, col3 = st.columns(3)
+                with col1: st.text_input("IPv4 Access List Name", value=st.session_state.get("param_sec_v4_acl_name", "ACL-MGMT"), key="param_sec_v4_acl_name")
+                with col2: st.number_input("Entry Sequence", value=st.session_state.get("param_sec_v4_seq", 10), key="param_sec_v4_seq")
+                with col3: st.selectbox("Action", ["permit", "deny"], key="param_sec_v4_act")
 
             bind_cb("Verify SSH FIPS (`VerifySSHFIPSRestrictions`)", "chk_sec_fips")
             bind_cb("Verify SSH IPv4 ACL (`VerifySSHIPv4Acl`)", "chk_sec_ssh_v4_acl")
@@ -622,9 +623,10 @@ with tab_catalog:
 
             bind_cb("Verify DNS Servers (`VerifyDNSServers`)", "chk_svc_dns_servers")
             if st.session_state.get("chk_svc_dns_servers"):
-                col1, col2 = st.columns(2)
+                col1, col2, col3 = st.columns(3)
                 with col1: st.text_input("DNS Server IPs (comma-separated)", value=st.session_state.get("param_svc_dns_ips", "8.8.8.8"), key="param_svc_dns_ips")
                 with col2: st.text_input("VRF", value=st.session_state.get("param_svc_dns_vrf", "default"), key="param_svc_dns_vrf")
+                with col3: st.number_input("Priority", value=st.session_state.get("param_svc_dns_prio", 1), key="param_svc_dns_prio")
 
             bind_cb("Verify Errdisable Recovery (`VerifyErrdisableRecovery`)", "chk_svc_errdisable_rec")
             
@@ -644,13 +646,14 @@ with tab_catalog:
             bind_cb("Verify SNMP IPv4 ACL (`VerifySnmpIPv4Acl`)", "chk_snmp_v4_acl")
             if st.session_state.get("chk_snmp_v4_acl"):
                 col1, col2 = st.columns(2)
-                with col1: st.text_input("SNMP IPv4 ACL Name", value=st.session_state.get("param_snmp_v4_acl_name", "ACL-SNMP-V4"), key="param_snmp_v4_acl_name")
+                with col1: st.number_input("SNMP IPv4 ACL Number", value=st.session_state.get("param_snmp_v4_acl_num", 10), key="param_snmp_v4_acl_num")
                 with col2: st.text_input("VRF", value=st.session_state.get("param_snmp_v4_acl_vrf", "default"), key="param_snmp_v4_acl_vrf")
 
             bind_cb("Verify SNMP IPv6 ACL (`VerifySnmpIPv6Acl`)", "chk_snmp_v6_acl")
             if st.session_state.get("chk_snmp_v6_acl"):
                 col1, col2 = st.columns(2)
-                with col1: st.text_input("SNMP IPv6 ACL Name", value=st.session_state.get("param_snmp_v6_acl_name", "ACL-SNMP-V6"), key="param_snmp_v6_acl_vrf", default="default")
+                with col1: st.number_input("SNMP IPv6 ACL Number", value=st.session_state.get("param_snmp_v6_acl_num", 10), key="param_snmp_v6_acl_num")
+                with col2: st.text_input("VRF", value=st.session_state.get("param_snmp_v6_acl_vrf", "default"), key="param_snmp_v6_acl_vrf")
 
             bind_cb("Verify SNMP Location (`VerifySnmpLocation`)", "chk_snmp_location")
             if st.session_state.get("chk_snmp_location"):
@@ -742,7 +745,7 @@ with tab_catalog:
         if parsed_tags: body["filters"] = {"tags": parsed_tags}
         catalog_dict[module].append({test_name: body if body else None})
 
-    # Key to Module & Test Class mappings with fixed schema inputs
+    # Key to Module & Test Class mappings with fixed schemas
     key_to_test_map = {
         "chk_aaa_authen": ("anta.tests.aaa", "VerifyAuthenMethods", {
             "methods": [m.strip() for m in st.session_state.get("param_aaa_authen_methods", "local").split(",") if m.strip()],
@@ -766,7 +769,14 @@ with tab_catalog:
         
         "chk_avt_path": ("anta.tests.avt", "VerifyAVTPathHealth", None),
         "chk_avt_role": ("anta.tests.avt", "VerifyAVTRole", {"role": st.session_state.get("param_avt_role_val", "edge")}),
-        "chk_avt_specific_path": ("anta.tests.avt", "VerifyAVTSpecificPath", {"avt_paths": [{"destination": st.session_state.get("param_avt_spec_dest", "10.0.0.1"), "vrf": st.session_state.get("param_avt_spec_vrf", "default")}]}),
+        "chk_avt_specific_path": ("anta.tests.avt", "VerifyAVTSpecificPath", {
+            "avt_paths": [{
+                "avt_name": st.session_state.get("param_avt_spec_name", "AVT1"),
+                "destination": st.session_state.get("param_avt_spec_dest", "10.0.0.1"),
+                "next_hop": st.session_state.get("param_avt_spec_next_hop", "10.0.0.2"),
+                "vrf": st.session_state.get("param_avt_spec_vrf", "default")
+            }]
+        }),
         "chk_bfd_health": ("anta.tests.bfd", "VerifyBFDPeersHealth", None),
         "chk_bfd_intervals": ("anta.tests.bfd", "VerifyBFDPeersIntervals", {
             "bfd_peers": [{
@@ -833,49 +843,56 @@ with tab_catalog:
         "chk_hw_temp": ("anta.tests.hardware", "VerifyTemperature", None),
         "chk_hw_trans": ("anta.tests.hardware", "VerifyTransceiversManufacturers", {"manufacturers": [m.strip() for m in st.session_state.get("param_hw_mfg", "Arista Networks").split(",") if m.strip()]}),
         "chk_hw_trans_temp": ("anta.tests.hardware", "VerifyTransceiversTemperature", None),
-        "chk_hw_trans_presence": ("anta.tests.hardware", "VerifyTransceiversPresence", {"interfaces": [{"name": i.strip()} for i in st.session_state.get("param_hw_trans_pres_intf", "Ethernet1").split(",") if i.strip()]}),
         "chk_hw_trans_optics": ("anta.tests.hardware", "VerifyTransceiversOptics", None),
-        "chk_hw_pse": ("anta.tests.hardware", "VerifyPseStatus", None),
 
         "chk_int_ipv4": ("anta.tests.interfaces", "VerifyInterfaceIPv4", {"interfaces": [{"name": st.session_state.get("param_int_v4_name", "Ethernet1"), "primary_ip": st.session_state.get("param_int_v4_ip", "10.0.0.1/24")}]}),
-        "chk_int_speed": ("anta.tests.interfaces", "VerifyInterfacesSpeed", {"interfaces": [{"name": st.session_state.get("param_int_speed_name", "Ethernet1"), "speed": int(st.session_state.get("param_int_speed_val", 10000))}]}),
+        "chk_int_speed": ("anta.tests.interfaces", "VerifyInterfacesSpeed", {"interfaces": [{"name": st.session_state.get("param_int_speed_name", "Ethernet1"), "speed": int(st.session_state.get("param_int_speed_val", 1000))}]}),
         "chk_int_status": ("anta.tests.interfaces", "VerifyInterfacesStatus", {"interfaces": [{"name": i.strip(), "status": "up"} for i in st.session_state.get("param_target_intfs_input", "Ethernet1").split(",") if i.strip()]}),
         "chk_int_l2mtu": ("anta.tests.interfaces", "VerifyL2MTU", {"mtu": int(st.session_state.get("param_int_l2mtu_val", 9214))}),
         "chk_int_l3mtu": ("anta.tests.interfaces", "VerifyL3MTU", {"mtu": int(st.session_state.get("param_int_l3mtu_val", 1500))}),
 
         "chk_sw_extensions": ("anta.tests.software", "VerifyEOSExtensions", None),
-        "chk_sw_version": ("anta.tests.software", "VerifyEOSVersion", {"version": st.session_state.get("param_sw_ver", "4.30.2F")}),
-        "chk_sw_terminattr": ("anta.tests.software", "VerifyTerminAttrVersion", {"version": st.session_state.get("param_sw_terminattr_ver", "1.28.0")}),
+        "chk_sw_version": ("anta.tests.software", "VerifyEOSVersion", {"versions": [st.session_state.get("param_sw_ver", "4.30.2F")]}),
+        "chk_sw_terminattr": ("anta.tests.software", "VerifyTerminAttrVersion", {"versions": [st.session_state.get("param_sw_terminattr_ver", "1.28.0")]}),
 
         "chk_sys_agent_logs": ("anta.tests.system", "VerifyAgentLogs", None),
         "chk_sys_cpu": ("anta.tests.system", "VerifyCPUUtilization", None),
         "chk_sys_coredump": ("anta.tests.system", "VerifyCoredump", None),
-        "chk_sys_file_presence": ("anta.tests.system", "VerifyFilePresence", {"files": [f.strip() for f in st.session_state.get("param_sys_files_val", "flash:/boot-config").split(",") if f.strip()]}),
+        "chk_sys_file_presence": ("anta.tests.system", "VerifyFilePresence", {"filenames": [f.strip() for f in st.session_state.get("param_sys_files_val", "flash:/boot-config").split(",") if f.strip()]}),
         "chk_sys_fs_util": ("anta.tests.system", "VerifyFileSystemUtilization", None),
         "chk_sys_flash_util": ("anta.tests.system", "VerifyFlashUtilization", None),
         "chk_sys_maintenance": ("anta.tests.system", "VerifyMaintenance", None),
         "chk_sys_mem": ("anta.tests.system", "VerifyMemoryUtilization", None),
         "chk_sys_ntp": ("anta.tests.system", "VerifyNTP", None),
-        "chk_sys_ntp_assoc": ("anta.tests.system", "VerifyNTPAssociations", {"ntp_servers": [{"server": s.strip()} for s in st.session_state.get("param_sys_ntp_servers_val", "10.0.0.1").split(",") if s.strip()]}),
+        "chk_sys_ntp_assoc": ("anta.tests.system", "VerifyNTPAssociations", {"ntp_servers": [{"server_address": s.strip(), "stratum": 1} for s in st.session_state.get("param_sys_ntp_servers_val", "10.0.0.1").split(",") if s.strip()]}),
         "chk_sys_reload": ("anta.tests.system", "VerifyReloadCause", None),
         "chk_sys_uptime": ("anta.tests.system", "VerifyUptime", {"minimum": int(st.session_state.get("param_sys_uptime_val", 60))}),
 
         "chk_mlag_reload_delay": ("anta.tests.mlag", "VerifyMlagReloadDelay", {"reload_delay": int(st.session_state.get("param_mlag_delay", 300)), "reload_delay_non_mlag": int(st.session_state.get("param_mlag_non_delay", 330))}),
         "chk_bgp_peer_count": ("anta.tests.routing.bgp", "VerifyBGPPeerCount", {"address_families": [{"afi": "ipv4", "safi": "unicast", "vrf": st.session_state.get("param_bgp_cnt_vrf", "default"), "num_peers": int(st.session_state.get("param_bgp_cnt_num", 2))}]}),
-        "chk_bgp_specific_peers": ("anta.tests.routing.bgp", "VerifyBGPSpecificPeers", {"peers": [{"peer_address": st.session_state.get("param_bgp_spec_ip", "10.0.0.2"), "vrf": st.session_state.get("param_bgp_spec_vrf", "default"), "asn": int(st.session_state.get("param_bgp_spec_asn", 65000))}]}),
+        "chk_bgp_specific_peers": ("anta.tests.routing.bgp", "VerifyBGPSpecificPeers", {
+            "address_families": [{
+                "afi": "ipv4",
+                "safi": "unicast", "bgp_peers": [{
+                    "peer_address": st.session_state.get("param_bgp_spec_ip", "10.0.0.2"),
+                    "vrf": st.session_state.get("param_bgp_spec_vrf", "default"),
+                    "asn": int(st.session_state.get("param_bgp_spec_asn", 65000))
+                }]
+            }]
+        }),
         "chk_rt_nexthops": ("anta.tests.routing.generic", "VerifyIPv4RouteNextHops", {"route_entries": [{"prefix": st.session_state.get("param_rt_nh_prefix", "10.0.0.0/24"), "nexthops": [ip.strip() for ip in st.session_state.get("param_rt_nh_ips", "10.100.0.1").split(",") if ip.strip()]}]}),
-        "chk_rt_presence_prefix": ("anta.tests.routing.generic", "VerifyIPv4RoutePresencePerPrefix", {"prefixes": [p.strip() for p in st.session_state.get("param_rt_pres_prefixes", "10.0.0.0/24").split(",") if p.strip()]}),
+        "chk_rt_presence_prefix": ("anta.tests.routing.generic", "VerifyIPv4RoutePresencePerPrefix", {"route_entries": [{"prefix": p.strip(), "vrf": "default"} for p in st.session_state.get("param_rt_pres_prefixes", "10.0.0.0/24").split(",") if p.strip()]}),
         "chk_rt_size": ("anta.tests.routing.generic", "VerifyRoutingTableSize", {"minimum": int(st.session_state.get("param_rt_sz_min", 1)), "maximum": int(st.session_state.get("param_rt_sz_max", 10000))}),
         "chk_hostname": ("anta.tests.services", "VerifyHostname", {"hostname": st.session_state.get("param_service_hostname", "Switch-1")}),
         
         "chk_snmp_contact": ("anta.tests.snmp", "VerifySnmpContact", {"contact": st.session_state.get("param_snmp_contact_val", "admin@domain.com")}),
         "chk_snmp_location": ("anta.tests.snmp", "VerifySnmpLocation", {"location": st.session_state.get("param_snmp_location_val", "DataCenter-Rack1")}),
-        "chk_snmp_v4_acl": ("anta.tests.snmp", "VerifySnmpIPv4Acl", {"access_list": st.session_state.get("param_snmp_v4_acl_name", "ACL-SNMP-V4"), "vrf": st.session_state.get("param_snmp_v4_acl_vrf", "default")}),
-        "chk_snmp_v6_acl": ("anta.tests.snmp", "VerifySnmpIPv6Acl", {"access_list": st.session_state.get("param_snmp_v6_acl_name", "ACL-SNMP-V6"), "vrf": st.session_state.get("param_snmp_v6_acl_vrf", "default")}),
+        "chk_snmp_v4_acl": ("anta.tests.snmp", "VerifySnmpIPv4Acl", {"number": int(st.session_state.get("param_snmp_v4_acl_num", 10)), "vrf": st.session_state.get("param_snmp_v4_acl_vrf", "default")}),
+        "chk_snmp_v6_acl": ("anta.tests.snmp", "VerifySnmpIPv6Acl", {"number": int(st.session_state.get("param_snmp_v6_acl_num", 10)), "vrf": st.session_state.get("param_snmp_v6_acl_vrf", "default")}),
         "chk_snmp_status": ("anta.tests.snmp", "VerifySnmpStatus", {"vrf": st.session_state.get("param_snmp_vrf", "default")}),
-        "chk_sec_v4_acl": ("anta.tests.security", "VerifyIPv4ACL", {"ipv4_access_lists": [{"name": st.session_state.get("param_sec_v4_acl_name", "ACL-MGMT")}]}),
+        "chk_sec_v4_acl": ("anta.tests.security", "VerifyIPv4ACL", {"ipv4_access_lists": [{"name": st.session_state.get("param_sec_v4_acl_name", "ACL-MGMT"), "entries": [{"sequence": int(st.session_state.get("param_sec_v4_seq", 10)), "action": st.session_state.get("param_sec_v4_act", "permit")}]}]}),
         "chk_svc_dns_lookup": ("anta.tests.services", "VerifyDNSLookup", {"domain_names": [d.strip() for d in st.session_state.get("param_svc_dns_domains", "arista.com").split(",") if d.strip()]}),
-        "chk_svc_dns_servers": ("anta.tests.services", "VerifyDNSServers", {"dns_servers": [{"server": ip.strip(), "vrf": st.session_state.get("param_svc_dns_vrf", "default")} for ip in st.session_state.get("param_svc_dns_ips", "8.8.8.8").split(",") if ip.strip()]}),
+        "chk_svc_dns_servers": ("anta.tests.services", "VerifyDNSServers", {"dns_servers": [{"server_address": ip.strip(), "vrf": st.session_state.get("param_svc_dns_vrf", "default"), "priority": int(st.session_state.get("param_svc_dns_prio", 1))} for ip in st.session_state.get("param_svc_dns_ips", "8.8.8.8").split(",") if ip.strip()]}),
         "chk_stun_status": ("anta.tests.stun", "VerifyStunServer", {"server": st.session_state.get("param_stun_server", "stun.l.google.com")}),
         "chk_vlan_internal": ("anta.tests.vlan", "VerifyVlanInternalPolicy", {"policy": st.session_state.get("param_vlan_policy", "ascending"), "start_vlan_id": int(st.session_state.get("param_vlan_start", 1006)), "end_vlan_id": int(st.session_state.get("param_vlan_end", 4094))})
     }
@@ -918,7 +935,7 @@ with tab_catalog:
         if st.session_state.get(k, False):
             add_test(mod, test_cls, params)
 
-    # --- PER-TEST PRE-VALIDATION LOGIC ---
+    # --- PER-TEST PRE-VALIDATION LOGIC (FULL DETAILED TRACE) ---
     valid_catalog_dict = {}
     invalid_config_results = []
 
