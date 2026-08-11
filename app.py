@@ -358,11 +358,17 @@ with tab_catalog:
 
         elif selected_cat == "Flow_GreenT":
             bind_cb("Verify Hardware Flow Tracker (`VerifyHardwareFlowTrackerStatus`)", "chk_flow_tracking")
+            if st.session_state.get("chk_flow_tracking"):
+                st.text_input("Tracker Name", value=st.session_state.get("param_flow_tracker_name", "FLOW-TRACKER"), key="param_flow_tracker_name")
+
             bind_cb("Verify GreenT Policy (`VerifyGreenT`)", "chk_greent_policy")
             bind_cb("Verify GreenT Counters (`VerifyGreenTCounters`)", "chk_greent_counters")
 
         elif selected_cat == "Hardware":
             bind_cb("Verify Linecards Absence (`VerifyAbsenceOfLinecards`)", "chk_hw_linecards")
+            if st.session_state.get("chk_hw_linecards"):
+                st.text_input("Linecards / Slots (comma-separated)", value=st.session_state.get("param_hw_linecards_val", "Linecard1"), key="param_hw_linecards_val")
+
             bind_cb("Verify Adverse Drops (`VerifyAdverseDrops`)", "chk_hw_drops")
             bind_cb("Verify Chassis Health (`VerifyChassisHealth`)", "chk_hw_chassis")
             bind_cb("Verify Environment Cooling (`VerifyEnvironmentCooling`)", "chk_hw_cooling_fans")
@@ -715,7 +721,7 @@ with tab_catalog:
             "types": [st.session_state.get("param_aaa_acct_con_types", "exec")]
         }),
         "chk_aaa_tacacs_src": ("anta.tests.aaa", "VerifyTacacsSourceIntf", {"intf": st.session_state.get("param_aaa_tacacs_intf", "Management1")}),
-        "chk_aaa_tacacs_servers": ("anta.tests.aaa", "VerifyTacacsServers", {"servers": [{"server": ip.strip()} for ip in st.session_state.get("param_aaa_tacacs_ips", "10.1.1.1").split(",") if ip.strip()]}),
+        "chk_aaa_tacacs_servers": ("anta.tests.aaa", "VerifyTacacsServers", {"servers": [ip.strip() for ip in st.session_state.get("param_aaa_tacacs_ips", "10.1.1.1").split(",") if ip.strip()]}),
         "chk_aaa_tacacs_groups": ("anta.tests.aaa", "VerifyTacacsServerGroups", None),
         "chk_aaa_radius_src": ("anta.tests.aaa", "VerifyRadiusSourceIntf", None),
         "chk_aaa_radius_servers": ("anta.tests.aaa", "VerifyRadiusServers", None),
@@ -746,11 +752,11 @@ with tab_catalog:
         "chk_evpn_type5": ("anta.tests.evpn", "VerifyEVPNType5Routes", {"prefixes": [{"address": st.session_state.get("param_evpn_prefix", "10.0.0.0/24"), "vni": int(st.session_state.get("param_evpn_vni", 10010))}]}),
         "chk_fn_fn44": ("anta.tests.field_notices", "VerifyFieldNotice44Resolution", None),
         "chk_fn_fn72": ("anta.tests.field_notices", "VerifyFieldNotice72Resolution", None),
-        "chk_flow_tracking": ("anta.tests.flow_tracking", "VerifyHardwareFlowTrackerStatus", None),
+        "chk_flow_tracking": ("anta.tests.flow_tracking", "VerifyHardwareFlowTrackerStatus", {"trackers": [{"name": st.session_state.get("param_flow_tracker_name", "FLOW-TRACKER")}]}),
         "chk_greent_policy": ("anta.tests.greent", "VerifyGreenT", None),
         "chk_greent_counters": ("anta.tests.greent", "VerifyGreenTCounters", None),
 
-        "chk_hw_linecards": ("anta.tests.hardware", "VerifyAbsenceOfLinecards", None),
+        "chk_hw_linecards": ("anta.tests.hardware", "VerifyAbsenceOfLinecards", {"linecards": [lc.strip() for lc in st.session_state.get("param_hw_linecards_val", "Linecard1").split(",") if lc.strip()]}),
         "chk_hw_drops": ("anta.tests.hardware", "VerifyAdverseDrops", None),
         "chk_hw_chassis": ("anta.tests.hardware", "VerifyChassisHealth", None),
         "chk_hw_cooling_fans": ("anta.tests.hardware", "VerifyEnvironmentCooling", None),
