@@ -275,8 +275,16 @@ with tab_catalog:
                 st.text_input("TACACS Server IPs (comma-separated)", value=st.session_state.get("param_aaa_tacacs_ips", "10.1.1.1"), key="param_aaa_tacacs_ips")
             
             bind_cb("Verify TACACS Server Groups (`VerifyTacacsServerGroups`)", "chk_aaa_tacacs_groups")
+            if st.session_state.get("chk_aaa_tacacs_groups"):
+                st.text_input("TACACS Group Names (comma-separated)", value=st.session_state.get("param_aaa_tacacs_groups_val", "TACACS-SERVERS"), key="param_aaa_tacacs_groups_val")
+
             bind_cb("Verify RADIUS Source Intf (`VerifyRadiusSourceIntf`)", "chk_aaa_radius_src")
+            if st.session_state.get("chk_aaa_radius_src"):
+                st.text_input("RADIUS Source Interface", value=st.session_state.get("param_aaa_radius_intf", "Management1"), key="param_aaa_radius_intf")
+
             bind_cb("Verify RADIUS Servers (`VerifyRadiusServers`)", "chk_aaa_radius_servers")
+            if st.session_state.get("chk_aaa_radius_servers"):
+                st.text_input("RADIUS Server IPs (comma-separated)", value=st.session_state.get("param_aaa_radius_ips", "10.2.2.1"), key="param_aaa_radius_ips")
 
         elif selected_cat == "AVT_BFD":
             bind_cb("Verify AVT Path Health (`VerifyAVTPathHealth`)", "chk_avt_path")
@@ -388,6 +396,9 @@ with tab_catalog:
             
             bind_cb("Verify Transceivers Temperature (`VerifyTransceiversTemperature`)", "chk_hw_trans_temp")
             bind_cb("Verify Transceivers Presence (`VerifyTransceiversPresence`)", "chk_hw_trans_presence")
+            if st.session_state.get("chk_hw_trans_presence"):
+                st.text_input("Transceivers Interfaces (comma-separated)", value=st.session_state.get("param_hw_trans_pres_intf", "Ethernet1"), key="param_hw_trans_pres_intf")
+
             bind_cb("Verify Transceivers Optics (`VerifyTransceiversOptics`)", "chk_hw_trans_optics")
             bind_cb("Verify PSE Status (`VerifyPseStatus`)", "chk_hw_pse")
 
@@ -477,7 +488,7 @@ with tab_catalog:
             bind_cb("Verify Specific Path (`VerifySpecificPath`)", "chk_path_sel_specific")
             st.divider()
             bind_cb("Verify TCAM Profile (`VerifyTcamProfile`)", "chk_tcam_profile")
-            bind_cb("Verify Unified Forwarding Table Mode (`VerifyUnifiedForwardingTableMode`)", "chk_uft_mode")
+            bind_cb("Verify UFT Mode (`VerifyUnifiedForwardingTableMode`)", "chk_uft_mode")
 
         elif selected_cat == "PTP":
             bind_cb("Verify PTP Grandmaster (`VerifyPtpGMStatus`)", "chk_ptp_gm")
@@ -643,6 +654,8 @@ with tab_catalog:
                 st.text_input("Expected EOS Version", value=st.session_state.get("param_sw_ver", "4.30.2F"), key="param_sw_ver")
             
             bind_cb("Verify TerminAttr Version (`VerifyTerminAttrVersion`)", "chk_sw_terminattr")
+            if st.session_state.get("chk_sw_terminattr"):
+                st.text_input("Expected TerminAttr Version", value=st.session_state.get("param_sw_terminattr_ver", "1.28.0"), key="param_sw_terminattr_ver")
 
         elif selected_cat == "STP":
             bind_cb("Verify STP Blocked Ports (`VerifySTPBlockedPorts`)", "chk_stp_blocked")
@@ -666,12 +679,18 @@ with tab_catalog:
             bind_cb("Verify CPU Utilization (`VerifyCPUUtilization`)", "chk_sys_cpu")
             bind_cb("Verify Coredump (`VerifyCoredump`)", "chk_sys_coredump")
             bind_cb("Verify File Presence (`VerifyFilePresence`)", "chk_sys_file_presence")
+            if st.session_state.get("chk_sys_file_presence"):
+                st.text_input("Flash Files (comma-separated)", value=st.session_state.get("param_sys_files_val", "flash:/boot-config"), key="param_sys_files_val")
+
             bind_cb("Verify File System Util (`VerifyFileSystemUtilization`)", "chk_sys_fs_util")
             bind_cb("Verify Flash Util (`VerifyFlashUtilization`)", "chk_sys_flash_util")
             bind_cb("Verify Maintenance (`VerifyMaintenance`)", "chk_sys_maintenance")
             bind_cb("Verify Memory Utilization (`VerifyMemoryUtilization`)", "chk_sys_mem")
             bind_cb("Verify NTP (`VerifyNTP`)", "chk_sys_ntp")
             bind_cb("Verify NTP Associations (`VerifyNTPAssociations`)", "chk_sys_ntp_assoc")
+            if st.session_state.get("chk_sys_ntp_assoc"):
+                st.text_input("Expected NTP Servers (comma-separated)", value=st.session_state.get("param_sys_ntp_servers_val", "10.0.0.1"), key="param_sys_ntp_servers_val")
+
             bind_cb("Verify Reload Cause (`VerifyReloadCause`)", "chk_sys_reload")
             
             bind_cb("Verify Uptime (`VerifyUptime`)", "chk_sys_uptime")
@@ -703,7 +722,7 @@ with tab_catalog:
         if parsed_tags: body["filters"] = {"tags": parsed_tags}
         catalog_dict[module].append({test_name: body if body else None})
 
-    # Key to Module & Test Class mappings
+    # Key to Module & Test Class mappings with complete default structures
     key_to_test_map = {
         "chk_aaa_authen": ("anta.tests.aaa", "VerifyAuthenMethods", {
             "methods": [m.strip() for m in st.session_state.get("param_aaa_authen_methods", "local").split(",") if m.strip()],
@@ -723,9 +742,9 @@ with tab_catalog:
         }),
         "chk_aaa_tacacs_src": ("anta.tests.aaa", "VerifyTacacsSourceIntf", {"intf": st.session_state.get("param_aaa_tacacs_intf", "Management1")}),
         "chk_aaa_tacacs_servers": ("anta.tests.aaa", "VerifyTacacsServers", {"servers": [ip.strip() for ip in st.session_state.get("param_aaa_tacacs_ips", "10.1.1.1").split(",") if ip.strip()]}),
-        "chk_aaa_tacacs_groups": ("anta.tests.aaa", "VerifyTacacsServerGroups", None),
-        "chk_aaa_radius_src": ("anta.tests.aaa", "VerifyRadiusSourceIntf", None),
-        "chk_aaa_radius_servers": ("anta.tests.aaa", "VerifyRadiusServers", None),
+        "chk_aaa_tacacs_groups": ("anta.tests.aaa", "VerifyTacacsServerGroups", {"groups": [g.strip() for g in st.session_state.get("param_aaa_tacacs_groups_val", "TACACS-SERVERS").split(",") if g.strip()]}),
+        "chk_aaa_radius_src": ("anta.tests.aaa", "VerifyRadiusSourceIntf", {"intf": st.session_state.get("param_aaa_radius_intf", "Management1")}),
+        "chk_aaa_radius_servers": ("anta.tests.aaa", "VerifyRadiusServers", {"servers": [ip.strip() for ip in st.session_state.get("param_aaa_radius_ips", "10.2.2.1").split(",") if ip.strip()]}),
         
         "chk_avt_path": ("anta.tests.avt", "VerifyAVTPathHealth", None),
         "chk_avt_role": ("anta.tests.avt", "VerifyAVTRole", {"role": st.session_state.get("param_avt_role_val", "edge")}),
@@ -761,7 +780,7 @@ with tab_catalog:
         "chk_hw_drops": ("anta.tests.hardware", "VerifyAdverseDrops", None),
         "chk_hw_chassis": ("anta.tests.hardware", "VerifyChassisHealth", None),
         "chk_hw_cooling_fans": ("anta.tests.hardware", "VerifyEnvironmentCooling", None),
-        "chk_hw_power": ("anta.tests.hardware", "VerifyEnvironmentPower", None),
+        "chk_hw_power": ("anta.tests.hardware", "VerifyEnvironmentPower", {"states": ["ok"]}),
         "chk_hw_sys_cooling": ("anta.tests.hardware", "VerifyEnvironmentSystemCooling", None),
         "chk_hw_capacity": ("anta.tests.hardware", "VerifyHardwareCapacityUtilization", None),
         "chk_hw_inventory": ("anta.tests.hardware", "VerifyInventory", None),
@@ -771,7 +790,7 @@ with tab_catalog:
         "chk_hw_temp": ("anta.tests.hardware", "VerifyTemperature", None),
         "chk_hw_trans": ("anta.tests.hardware", "VerifyTransceiversManufacturers", {"manufacturers": [m.strip() for m in st.session_state.get("param_hw_mfg", "Arista Networks").split(",") if m.strip()]}),
         "chk_hw_trans_temp": ("anta.tests.hardware", "VerifyTransceiversTemperature", None),
-        "chk_hw_trans_presence": ("anta.tests.hardware", "VerifyTransceiversPresence", None),
+        "chk_hw_trans_presence": ("anta.tests.hardware", "VerifyTransceiversPresence", {"interfaces": [{"name": i.strip()} for i in st.session_state.get("param_hw_trans_pres_intf", "Ethernet1").split(",") if i.strip()]}),
         "chk_hw_trans_optics": ("anta.tests.hardware", "VerifyTransceiversOptics", None),
         "chk_hw_pse": ("anta.tests.hardware", "VerifyPseStatus", None),
 
@@ -783,18 +802,18 @@ with tab_catalog:
 
         "chk_sw_extensions": ("anta.tests.software", "VerifyEOSExtensions", None),
         "chk_sw_version": ("anta.tests.software", "VerifyEOSVersion", {"version": st.session_state.get("param_sw_ver", "4.30.2F")}),
-        "chk_sw_terminattr": ("anta.tests.software", "VerifyTerminAttrVersion", None),
+        "chk_sw_terminattr": ("anta.tests.software", "VerifyTerminAttrVersion", {"version": st.session_state.get("param_sw_terminattr_ver", "1.28.0")}),
 
         "chk_sys_agent_logs": ("anta.tests.system", "VerifyAgentLogs", None),
         "chk_sys_cpu": ("anta.tests.system", "VerifyCPUUtilization", None),
         "chk_sys_coredump": ("anta.tests.system", "VerifyCoredump", None),
-        "chk_sys_file_presence": ("anta.tests.system", "VerifyFilePresence", None),
+        "chk_sys_file_presence": ("anta.tests.system", "VerifyFilePresence", {"files": [f.strip() for f in st.session_state.get("param_sys_files_val", "flash:/boot-config").split(",") if f.strip()]}),
         "chk_sys_fs_util": ("anta.tests.system", "VerifyFileSystemUtilization", None),
         "chk_sys_flash_util": ("anta.tests.system", "VerifyFlashUtilization", None),
         "chk_sys_maintenance": ("anta.tests.system", "VerifyMaintenance", None),
         "chk_sys_mem": ("anta.tests.system", "VerifyMemoryUtilization", None),
         "chk_sys_ntp": ("anta.tests.system", "VerifyNTP", None),
-        "chk_sys_ntp_assoc": ("anta.tests.system", "VerifyNTPAssociations", None),
+        "chk_sys_ntp_assoc": ("anta.tests.system", "VerifyNTPAssociations", {"ntp_servers": [{"server": s.strip()} for s in st.session_state.get("param_sys_ntp_servers_val", "10.0.0.1").split(",") if s.strip()]}),
         "chk_sys_reload": ("anta.tests.system", "VerifyReloadCause", None),
         "chk_sys_uptime": ("anta.tests.system", "VerifyUptime", {"minimum": int(st.session_state.get("param_sys_uptime_val", 60))}),
 
@@ -856,7 +875,7 @@ with tab_catalog:
         if st.session_state.get(k, False):
             add_test(mod, test_cls, params)
 
-    # --- PER-TEST PRE-VALIDATION LOGIC ---
+    # --- PER-TEST PRE-VALIDATION LOGIC (DETAILED TRACE IN DASHBOARD) ---
     valid_catalog_dict = {}
     invalid_config_results = []
 
@@ -872,16 +891,14 @@ with tab_catalog:
                 valid_catalog_dict[module_name].append(test_entry)
                 
             except Exception as err:
-                # Extract class name and error message
                 test_cls_name = list(test_entry.keys())[0] if isinstance(test_entry, dict) else str(test_entry)
-                err_msg = str(err).split("\n")[0]
                 
                 invalid_config_results.append({
                     "name": "Catalog Pre-Validator",
                     "categories": [module_name],
                     "description": f"{test_cls_name} (Invalid Config/Missing Parameters)",
                     "result": "error",
-                    "messages": [f"Validation Error: {err_msg}"]
+                    "messages": [str(err)]
                 })
 
     try:
@@ -937,7 +954,6 @@ with tab_dashboard:
                     except json.JSONDecodeError:
                         pass
                 
-                # Retrieve invalid pre-validation results from session state
                 invalid_pre_results = st.session_state.get("invalid_config_results", [])
                 
                 if not data and not invalid_pre_results:
@@ -1011,7 +1027,13 @@ with tab_dashboard:
                                     if 'categories' in row and pd.notna(row['categories']):
                                         cat_display = ", ".join(row['categories']) if isinstance(row['categories'], list) else row['categories']
                                         st.caption(f"**Category:** {cat_display}")
-                                    st.error(row['full_message'])
+                                    
+                                    # Render un-truncated full Pydantic trace if Pre-Validator error
+                                    if device_name == "Catalog Pre-Validator":
+                                        st.code(row['full_message'], language="text")
+                                    else:
+                                        st.error(row['full_message'])
+                                        
                                     if idx < fail_count:
                                         st.divider()
             except Exception as e:
