@@ -29,7 +29,7 @@ def save_settings(data_dict):
 
 saved_settings = load_settings()
 
-st.title("🚀 Arista ANTA Web GUI (v3.1)")
+st.title("🚀 Arista ANTA Web GUI (v3.2)")
 st.markdown("Manage your devices, tests, and run validations with fully customizable user parameters.")
 st.divider()
 
@@ -225,7 +225,10 @@ with tab_catalog:
         "chk_bgp_health", "chk_stp_blocked", "chk_stp_tc",
         "chk_evpn_type5", "chk_vxlan_intf", "chk_vxlan_sanity",
         "chk_mlag_status", "chk_mlag_interfaces", "chk_mlag_config_sanity", "chk_mlag_reload_delay",
-        "chk_igmp_snooping_global", "chk_ssh_status", "chk_hostname",
+        "chk_igmp_snooping_global", "chk_igmp_snooping_vlans",
+        "chk_sec_api_http", "chk_sec_api_https_ssl", "chk_sec_api_v4_acl", "chk_sec_api_v6_acl", "chk_sec_ssl_cert",
+        "chk_sec_entropy", "chk_sec_ipsec_health", "chk_sec_ssh_v4_acl", "chk_sec_ssh_v6_acl", "chk_ssh_status", "chk_sec_telnet",
+        "chk_hostname", "chk_svc_dns_lookup", "chk_svc_dns_servers", "chk_svc_errdisable_rec",
         "chk_flow_tracking", "chk_lanz", "chk_log_persistent", "chk_log_accounting", "chk_log_source_intf", "chk_log_hosts",
         "chk_path_sel_health", "chk_snmp_status", "chk_vlan_internal"
     ]
@@ -636,18 +639,76 @@ with tab_catalog:
             with c_md1: st.number_input("Reload Delay (sec)", value=st.session_state.get("param_mlag_reload_delay", 300), key="param_mlag_reload_delay", disabled=not st.session_state.get("chk_mlag_reload_delay", False))
             with c_md2: st.number_input("Non-MLAG Delay (sec)", value=st.session_state.get("param_mlag_non_mlag_delay", 330), key="param_mlag_non_mlag_delay", disabled=not st.session_state.get("chk_mlag_reload_delay", False))
 
-        # 12. MULTICAST
+        # 12. MULTICAST (EXPANDED SUITE)
         elif selected_cat == "Multicast":
-            st.checkbox("Verify IGMP Snooping Global (`VerifyIGMPSnoopingGlobal`)", key="chk_igmp_snooping_global")
+            st.checkbox("Verify IGMP Snooping Global Status (`VerifyIGMPSnoopingGlobal`)", key="chk_igmp_snooping_global")
+            st.checkbox("Global IGMP Snooping Should Be Enabled", value=st.session_state.get("param_igmp_global_enabled", True), key="param_igmp_global_enabled", disabled=not st.session_state.get("chk_igmp_snooping_global", False))
 
-        # 13. SECURITY
+            st.divider()
+            st.checkbox("Verify IGMP Snooping per VLANs (`VerifyIGMPSnoopingVlans`)", key="chk_igmp_snooping_vlans")
+            st.text_input("VLANs and Expected Status (e.g. 10:True, 12:False)", value=st.session_state.get("param_igmp_vlans_mapping", "10:True, 12:False"), key="param_igmp_vlans_mapping", disabled=not st.session_state.get("chk_igmp_snooping_vlans", False))
+
+        # 13. SECURITY (EXPANDED SUITE)
         elif selected_cat == "Security":
-            st.checkbox("Verify SSH Status (`VerifySSHStatus`)", key="chk_ssh_status")
+            st.checkbox("Verify eAPI HTTP Status (`VerifyAPIHttpStatus`)", key="chk_sec_api_http")
+            
+            st.divider()
+            st.checkbox("Verify eAPI HTTPS SSL Profile (`VerifyAPIHttpsSSL`)", key="chk_sec_api_https_ssl")
+            st.text_input("eAPI SSL Profile Name", value=st.session_state.get("param_sec_api_ssl_profile", "default"), key="param_sec_api_ssl_profile", disabled=not st.session_state.get("chk_sec_api_https_ssl", False))
 
-        # 14. SERVICES
+            st.divider()
+            c_sec1, c_sec2 = st.columns(2)
+            with c_sec1:
+                st.checkbox("Verify eAPI IPv4 ACL (`VerifyAPIIPv4Acl`)", key="chk_sec_api_v4_acl")
+                st.text_input("eAPI IPv4 ACL Name", value=st.session_state.get("param_sec_api_v4_acl_name", "ACL-EAPI-V4"), key="param_sec_api_v4_acl_name", disabled=not st.session_state.get("chk_sec_api_v4_acl", False))
+                st.text_input("eAPI IPv4 VRF", value=st.session_state.get("param_sec_api_v4_acl_vrf", "default"), key="param_sec_api_v4_acl_vrf", disabled=not st.session_state.get("chk_sec_api_v4_acl", False))
+            with c_sec2:
+                st.checkbox("Verify eAPI IPv6 ACL (`VerifyAPIIPv6Acl`)", key="chk_sec_api_v6_acl")
+                st.text_input("eAPI IPv6 ACL Name", value=st.session_state.get("param_sec_api_v6_acl_name", "ACL-EAPI-V6"), key="param_sec_api_v6_acl_name", disabled=not st.session_state.get("chk_sec_api_v6_acl", False))
+                st.text_input("eAPI IPv6 VRF", value=st.session_state.get("param_sec_api_v6_acl_vrf", "default"), key="param_sec_api_v6_acl_vrf", disabled=not st.session_state.get("chk_sec_api_v6_acl", False))
+
+            st.divider()
+            st.checkbox("Verify SSL Certificates (`VerifyAPISSLCertificate`)", key="chk_sec_ssl_cert")
+            st.number_input("Cert Expiry Threshold (Days)", value=st.session_state.get("param_sec_ssl_cert_days", 30), min_value=1, key="param_sec_ssl_cert_days", disabled=not st.session_state.get("chk_sec_ssl_cert", False))
+
+            st.divider()
+            st.checkbox("Verify Hardware Entropy (`VerifyHardwareEntropy`)", key="chk_sec_entropy")
+
+            st.divider()
+            st.checkbox("Verify IPSec Connections Health (`VerifyIPSecConnHealth`)", key="chk_sec_ipsec_health")
+
+            st.divider()
+            c_ssh1, c_ssh2 = st.columns(2)
+            with c_ssh1:
+                st.checkbox("Verify SSH IPv4 ACL (`VerifySSHIPv4Acl`)", key="chk_sec_ssh_v4_acl")
+                st.text_input("SSH IPv4 ACL Name", value=st.session_state.get("param_sec_ssh_v4_acl_name", "ACL-SSH-V4"), key="param_sec_ssh_v4_acl_name", disabled=not st.session_state.get("chk_sec_ssh_v4_acl", False))
+            with c_ssh2:
+                st.checkbox("Verify SSH IPv6 ACL (`VerifySSHIPv6Acl`)", key="chk_sec_ssh_v6_acl")
+                st.text_input("SSH IPv6 ACL Name", value=st.session_state.get("param_sec_ssh_v6_acl_name", "ACL-SSH-V6"), key="param_sec_ssh_v6_acl_name", disabled=not st.session_state.get("chk_sec_ssh_v6_acl", False))
+
+            st.divider()
+            st.checkbox("Verify SSH Service Status (`VerifySSHStatus`)", key="chk_ssh_status")
+
+            st.divider()
+            st.checkbox("Verify Telnet Status (`VerifyTelnetStatus` - Ensure Disabled)", key="chk_sec_telnet")
+
+        # 14. SERVICES (EXPANDED SUITE)
         elif selected_cat == "Services":
             st.checkbox("Verify Hostname (`VerifyHostname`)", key="chk_hostname")
             st.text_input("Expected Hostname", value=st.session_state.get("param_service_hostname", "Switch-1"), key="param_service_hostname", disabled=not st.session_state.get("chk_hostname", False))
+
+            st.divider()
+            st.checkbox("Verify DNS Name Resolution (`VerifyDNSLookup`)", key="chk_svc_dns_lookup")
+            st.text_input("Domain Names to Resolve (comma-separated)", value=st.session_state.get("param_svc_dns_domains", "arista.com, google.com"), key="param_svc_dns_domains", disabled=not st.session_state.get("chk_svc_dns_lookup", False))
+
+            st.divider()
+            st.checkbox("Verify Configured DNS Servers (`VerifyDNSServers`)", key="chk_svc_dns_servers")
+            c_dns1, c_dns2 = st.columns(2)
+            with c_dns1: st.text_input("DNS Server IPs (comma-separated)", value=st.session_state.get("param_svc_dns_srv_ips", "8.8.8.8, 1.1.1.1"), key="param_svc_dns_srv_ips", disabled=not st.session_state.get("chk_svc_dns_servers", False))
+            with c_dns2: st.text_input("DNS Servers VRF", value=st.session_state.get("param_svc_dns_srv_vrf", "default"), key="param_svc_dns_srv_vrf", disabled=not st.session_state.get("chk_svc_dns_servers", False))
+
+            st.divider()
+            st.checkbox("Verify Errdisable Recovery (`VerifyErrdisableRecovery`)", key="chk_svc_errdisable_rec")
 
         # 15. FLOW TRACKING
         elif selected_cat == "Flow Tracking":
@@ -847,13 +908,39 @@ with tab_catalog:
     if st.session_state.get("chk_mlag_reload_delay", False): add_test("anta.tests.mlag", {"VerifyMlagReloadDelay": {"reload_delay": int(st.session_state.get("param_mlag_reload_delay", 300)), "reload_delay_non_mlag": int(st.session_state.get("param_mlag_non_mlag_delay", 330))}})
 
     # Multicast
-    if st.session_state.get("chk_igmp_snooping_global", False): add_test("anta.tests.multicast", {"VerifyIGMPSnoopingGlobal": {"enabled": True}})
+    if st.session_state.get("chk_igmp_snooping_global", False): add_test("anta.tests.multicast", {"VerifyIGMPSnoopingGlobal": {"enabled": st.session_state.get("param_igmp_global_enabled", True)}})
+    if st.session_state.get("chk_igmp_snooping_vlans", False):
+        v_map_str = st.session_state.get("param_igmp_vlans_mapping", "10:True, 12:False")
+        vlans_dict = {}
+        for pair in v_map_str.split(","):
+            if ":" in pair:
+                v_id, v_st = pair.split(":")
+                try: vlans_dict[int(v_id.strip())] = (v_st.strip().lower() == "true")
+                except ValueError: pass
+        if vlans_dict: add_test("anta.tests.multicast", {"VerifyIGMPSnoopingVlans": {"vlans": vlans_dict}})
 
     # Security
+    if st.session_state.get("chk_sec_api_http", False): add_test("anta.tests.security", {"VerifyAPIHttpStatus": None})
+    if st.session_state.get("chk_sec_api_https_ssl", False): add_test("anta.tests.security", {"VerifyAPIHttpsSSL": {"profile": st.session_state.get("param_sec_api_ssl_profile", "default")}})
+    if st.session_state.get("chk_sec_api_v4_acl", False): add_test("anta.tests.security", {"VerifyAPIIPv4Acl": {"acl": st.session_state.get("param_sec_api_v4_acl_name", "ACL-EAPI-V4"), "vrf": st.session_state.get("param_sec_api_v4_acl_vrf", "default")}})
+    if st.session_state.get("chk_sec_api_v6_acl", False): add_test("anta.tests.security", {"VerifyAPIIPv6Acl": {"acl": st.session_state.get("param_sec_api_v6_acl_name", "ACL-EAPI-V6"), "vrf": st.session_state.get("param_sec_api_v6_acl_vrf", "default")}})
+    if st.session_state.get("chk_sec_ssl_cert", False): add_test("anta.tests.security", {"VerifyAPISSLCertificate": {"minimum_expiry_days": int(st.session_state.get("param_sec_ssl_cert_days", 30))}})
+    if st.session_state.get("chk_sec_entropy", False): add_test("anta.tests.security", {"VerifyHardwareEntropy": None})
+    if st.session_state.get("chk_sec_ipsec_health", False): add_test("anta.tests.security", {"VerifyIPSecConnHealth": None})
+    if st.session_state.get("chk_sec_ssh_v4_acl", False): add_test("anta.tests.security", {"VerifySSHIPv4Acl": {"acl": st.session_state.get("param_sec_ssh_v4_acl_name", "ACL-SSH-V4")}})
+    if st.session_state.get("chk_sec_ssh_v6_acl", False): add_test("anta.tests.security", {"VerifySSHIPv6Acl": {"acl": st.session_state.get("param_sec_ssh_v6_acl_name", "ACL-SSH-V6")}})
     if st.session_state.get("chk_ssh_status", False): add_test("anta.tests.security", {"VerifySSHStatus": None})
+    if st.session_state.get("chk_sec_telnet", False): add_test("anta.tests.security", {"VerifyTelnetStatus": None})
 
     # Services
     if st.session_state.get("chk_hostname", False): add_test("anta.tests.services", {"VerifyHostname": {"hostname": st.session_state.get("param_service_hostname", "Switch-1")}})
+    if st.session_state.get("chk_svc_dns_lookup", False): 
+        doms = [d.strip() for d in st.session_state.get("param_svc_dns_domains", "arista.com, google.com").split(",") if d.strip()]
+        add_test("anta.tests.services", {"VerifyDNSLookup": {"domain_names": doms}})
+    if st.session_state.get("chk_svc_dns_servers", False):
+        ips = [ip.strip() for ip in st.session_state.get("param_svc_dns_srv_ips", "8.8.8.8, 1.1.1.1").split(",") if ip.strip()]
+        add_test("anta.tests.services", {"VerifyDNSServers": {"dns_servers": [{"server": ip, "vrf": st.session_state.get("param_svc_dns_srv_vrf", "default")} for ip in ips]}})
+    if st.session_state.get("chk_svc_errdisable_rec", False): add_test("anta.tests.services", {"VerifyErrdisableRecovery": None})
 
     # Flow Tracking
     if st.session_state.get("chk_flow_tracking", False): add_test("anta.tests.flow_tracking", {"VerifyHardwareFlowTrackerStatus": {"trackers": [{"name": st.session_state.get("param_flow_tracker_name", "FLOW-TRACKER")}]}})
