@@ -29,7 +29,7 @@ def save_settings(data_dict):
 
 saved_settings = load_settings()
 
-# Define all available test keys including complete BGP suite
+# Define all available test keys including complete Routing Generic suite
 ALL_TEST_KEYS = [
     "chk_hw_trans", "chk_hw_cool", "chk_hw_power", "chk_hw_temp", "chk_hw_trans_presence", "chk_hw_trans_optics", "chk_hw_pse",
     "chk_sys_uptime", "chk_sys_ntp", "chk_sys_coredump", "chk_sys_reload", "chk_sys_cpu", "chk_sys_mem",
@@ -46,7 +46,7 @@ ALL_TEST_KEYS = [
     "chk_int_trident", "chk_int_voq", "chk_int_vrrp_mac", "chk_int_l2mtu",
     "chk_int_l3mtu", "chk_int_loopback", "chk_int_port_channel",
     "chk_int_svi", "chk_int_storm", "chk_int_ipv4",
-    "chk_rt_model", "chk_rt_status", "chk_rt_size", "chk_rt_presence", "chk_rt_v6_presence", "chk_rt_bfd",
+    "chk_rt_model", "chk_rt_status", "chk_rt_size", "chk_rt_presence_vrf", "chk_rt_presence_prefix", "chk_rt_nexthops", "chk_rt_v6_presence", "chk_rt_bfd",
     "chk_bgp_health", "chk_bgp_health_ribd", "chk_bgp_specific_peers", "chk_bgp_peer_count", "chk_bgp_peer_state",
     "chk_stp_blocked", "chk_stp_tc", "chk_stp_root", "chk_stp_mode",
     "chk_evpn_type5", "chk_vxlan_intf", "chk_vxlan_sanity", "chk_vtep_peers",
@@ -599,7 +599,7 @@ with tab_catalog:
                 bind_checkbox("Verify SVI", key="chk_int_svi")
                 bind_checkbox("Verify Storm Control Drops", key="chk_int_storm")
 
-        # 8. ROUTING GENERIC
+        # 8. ROUTING GENERIC (FULL EXPANDED SUITE)
         elif selected_cat == "Routing Generic":
             chk_rt_model = bind_checkbox("Verify Routing Protocol Model (`VerifyRoutingProtocolModel`)", key="chk_rt_model")
             st.selectbox("Protocol Model", ["multi-agent", "ribd"], key="param_rt_model_val", disabled=not chk_rt_model)
@@ -614,10 +614,23 @@ with tab_catalog:
             with col_max: st.number_input("Max Routes", value=st.session_state.get("param_rt_size_max", 1000), min_value=1, key="param_rt_size_max", disabled=not chk_rt_size)
             
             st.divider()
-            chk_rt_presence = bind_checkbox("Verify IPv4 Route Presence (`VerifyIPv4RoutePresencePerVRF`)", key="chk_rt_presence")
+            chk_rt_presence_vrf = bind_checkbox("Verify IPv4 Route Presence per VRF (`VerifyIPv4RoutePresencePerVRF`)", key="chk_rt_presence_vrf")
             c_rp1, c_rp2 = st.columns(2)
-            with c_rp1: st.text_input("Route Prefix", value=st.session_state.get("param_rt_prefix", "10.0.0.0/24"), key="param_rt_prefix", disabled=not chk_rt_presence)
-            with c_rp2: st.text_input("VRF (Route Presence)", value=st.session_state.get("param_rt_vrf", "default"), key="param_rt_vrf", disabled=not chk_rt_presence)
+            with c_rp1: st.text_input("Route Prefix", value=st.session_state.get("param_rt_prefix", "10.0.0.0/24"), key="param_rt_prefix", disabled=not chk_rt_presence_vrf)
+            with c_rp2: st.text_input("VRF (Route Presence)", value=st.session_state.get("param_rt_vrf", "default"), key="param_rt_vrf", disabled=not chk_rt_presence_vrf)
+
+            st.divider()
+            chk_rt_presence_prefix = bind_checkbox("Verify IPv4 Route Presence per Prefix - Large Routing Tables (`VerifyIPv4RoutePresencePerPrefix`)", key="chk_rt_presence_prefix")
+            c_rpp1, c_rpp2 = st.columns(2)
+            with c_rpp1: st.text_input("Prefix List (comma-separated)", value=st.session_state.get("param_rt_prefix_list", "10.0.0.1/32, 10.100.0.12/31"), key="param_rt_prefix_list", disabled=not chk_rt_presence_prefix)
+            with c_rpp2: st.text_input("VRF (Prefix)", value=st.session_state.get("param_rt_prefix_vrf", "default"), key="param_rt_prefix_vrf", disabled=not chk_rt_presence_prefix)
+
+            st.divider()
+            chk_rt_nexthops = bind_checkbox("Verify IPv4 Route Next-Hops (`VerifyIPv4RouteNextHops`)", key="chk_rt_nexthops")
+            c_nh1, c_nh2, c_nh3 = st.columns([2, 2, 1])
+            with c_nh1: st.text_input("Target Prefix", value=st.session_state.get("param_rt_nh_prefix", "10.10.0.1/32"), key="param_rt_nh_prefix", disabled=not chk_rt_nexthops)
+            with c_nh2: st.text_input("Expected Next-Hops (comma-separated)", value=st.session_state.get("param_rt_nh_ips", "10.100.0.8, 10.100.0.10"), key="param_rt_nh_ips", disabled=not chk_rt_nexthops)
+            with c_nh3: st.checkbox("Strict Matching", value=st.session_state.get("param_rt_nh_strict", False), key="param_rt_nh_strict", disabled=not chk_rt_nexthops)
 
             st.divider()
             chk_rt_v6_presence = bind_checkbox("Verify IPv6 Route Presence (`VerifyIPv6RoutePresencePerVRF`)", key="chk_rt_v6_presence")
@@ -628,7 +641,7 @@ with tab_catalog:
             st.divider()
             bind_checkbox("Verify BFD Single Hop Counters (`VerifyBFDSingleHopCounters`)", key="chk_rt_bfd")
 
-        # 9. ROUTING BGP (FULL EXPANDED SUITE)
+        # 9. ROUTING BGP
         elif selected_cat == "Routing BGP":
             chk_bgp_health = bind_checkbox("Verify BGP Peers Health Multi-Agent (`VerifyBGPPeersHealth`)", key="chk_bgp_health")
             st.text_input("BGP VRF (Multi-Agent)", value=st.session_state.get("param_bgp_vrf", "default"), key="param_bgp_vrf", disabled=not chk_bgp_health)
@@ -972,15 +985,21 @@ with tab_catalog:
     if st.session_state.get("chk_int_voq", False): add_test("anta.tests.interfaces", {"VerifyInterfacesVoqAndEgressQueueDrops": None})
     if st.session_state.get("chk_int_storm", False): add_test("anta.tests.interfaces", {"VerifyStormControlDrops": None})
 
-    # Routing Generic
+    # Routing Generic (FULL SUITE)
     if st.session_state.get("chk_rt_model", False): add_test("anta.tests.routing.generic", {"VerifyRoutingProtocolModel": {"model": st.session_state.get("param_rt_model_val", "multi-agent")}})
     if st.session_state.get("chk_rt_status", False): add_test("anta.tests.routing.generic", {"VerifyRoutingStatus": {"ipv4_unicast": True}})
     if st.session_state.get("chk_rt_size", False): add_test("anta.tests.routing.generic", {"VerifyRoutingTableSize": {"minimum": int(st.session_state.get("param_rt_size_min", 1)), "maximum": int(st.session_state.get("param_rt_size_max", 1000))}})
-    if st.session_state.get("chk_rt_presence", False): add_test("anta.tests.routing.generic", {"VerifyIPv4RoutePresencePerVRF": {"route_entries": [{"prefix": st.session_state.get("param_rt_prefix", "10.0.0.0/24"), "vrf": st.session_state.get("param_rt_vrf", "default")}]}})
+    if st.session_state.get("chk_rt_presence_vrf", False): add_test("anta.tests.routing.generic", {"VerifyIPv4RoutePresencePerVRF": {"route_entries": [{"prefix": st.session_state.get("param_rt_prefix", "10.0.0.0/24"), "vrf": st.session_state.get("param_rt_vrf", "default")}]}})
+    if st.session_state.get("chk_rt_presence_prefix", False):
+        p_list = [p.strip() for p in st.session_state.get("param_rt_prefix_list", "10.0.0.1/32").split(",") if p.strip()]
+        add_test("anta.tests.routing.generic", {"VerifyIPv4RoutePresencePerPrefix": {"route_entries": [{"prefix": p, "vrf": st.session_state.get("param_rt_prefix_vrf", "default")} for p in p_list]}})
+    if st.session_state.get("chk_rt_nexthops", False):
+        nh_list = [nh.strip() for nh in st.session_state.get("param_rt_nh_ips", "10.100.0.8").split(",") if nh.strip()]
+        add_test("anta.tests.routing.generic", {"VerifyIPv4RouteNextHops": {"route_entries": [{"prefix": st.session_state.get("param_rt_nh_prefix", "10.10.0.1/32"), "vrf": "default", "strict": st.session_state.get("param_rt_nh_strict", False), "nexthops": nh_list}]}})
     if st.session_state.get("chk_rt_v6_presence", False): add_test("anta.tests.routing.generic", {"VerifyIPv6RoutePresencePerVRF": {"route_entries": [{"prefix": st.session_state.get("param_rt_v6_prefix", "2001:db8::/32"), "vrf": st.session_state.get("param_rt_v6_vrf", "default")}]}})
     if st.session_state.get("chk_rt_bfd", False): add_test("anta.tests.routing.generic", {"VerifyBFDSingleHopCounters": None})
 
-    # Routing BGP (FULL SUITE)
+    # Routing BGP
     if st.session_state.get("chk_bgp_health", False): 
         add_test("anta.tests.routing.bgp", {"VerifyBGPPeersHealth": {"address_families": [{"afi": "ipv4", "safi": "unicast", "vrf": st.session_state.get("param_bgp_vrf", "default")}]}})
     if st.session_state.get("chk_bgp_health_ribd", False): 
