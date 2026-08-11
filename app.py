@@ -7,7 +7,7 @@ import os
 import re
 
 # Configure the web page layout
-st.set_page_config(page_title="ANTA Dashboard", layout="wide")
+st.set_page_config(page_title="ANTA Dashboard", layout="wide", initial_sidebar_state="expanded")
 
 # --- Persistent Settings Helper ---
 SETTINGS_FILE = "settings.json"
@@ -29,11 +29,155 @@ def save_settings(data_dict):
 
 saved_settings = load_settings()
 
-st.title("🚀 Arista ANTA Web GUI (v3.3)")
-st.markdown("Manage your devices, tests, and run validations with fully customizable user parameters.")
+# Define all available test keys
+ALL_TEST_KEYS = [
+    "chk_hw_trans", "chk_hw_cool", "chk_hw_power", "chk_hw_temp", "chk_hw_trans_presence", "chk_hw_trans_optics", "chk_hw_pse",
+    "chk_sys_uptime", "chk_sys_ntp", "chk_sys_coredump", "chk_sys_reload", "chk_sys_cpu", "chk_sys_mem",
+    "chk_aaa_authen", "chk_aaa_authz", "chk_aaa_acct_default", "chk_aaa_acct_console",
+    "chk_aaa_tacacs_src", "chk_aaa_tacacs_servers", "chk_aaa_tacacs_groups",
+    "chk_aaa_radius_src", "chk_aaa_radius_servers",
+    "chk_cfg_ztp", "chk_cfg_diff", "chk_cfg_banner",
+    "chk_conn_ping", "chk_conn_lldp",
+    "chk_int_err", "chk_int_disc", "chk_int_status",
+    "chk_int_proxy_arp", "chk_int_ill_lacp", "chk_int_err_dis", "chk_int_util",
+    "chk_int_ber", "chk_int_counter_det", "chk_int_ecn", "chk_int_egress_drop",
+    "chk_int_optics_rx", "chk_int_optics_temp", "chk_int_pfc", "chk_int_speed",
+    "chk_int_trident", "chk_int_voq", "chk_int_vrrp_mac", "chk_int_l2mtu",
+    "chk_int_l3mtu", "chk_int_loopback", "chk_int_port_channel",
+    "chk_int_svi", "chk_int_storm", "chk_int_ipv4",
+    "chk_rt_model", "chk_rt_status", "chk_rt_size", "chk_rt_presence",
+    "chk_bgp_health", "chk_stp_blocked", "chk_stp_tc",
+    "chk_evpn_type5", "chk_vxlan_intf", "chk_vxlan_sanity",
+    "chk_mlag_status", "chk_mlag_interfaces", "chk_mlag_config_sanity", "chk_mlag_reload_delay",
+    "chk_igmp_snooping_global", "chk_igmp_snooping_vlans",
+    "chk_sec_api_http", "chk_sec_api_https_ssl", "chk_sec_api_v4_acl", "chk_sec_api_v6_acl", "chk_sec_ssl_cert",
+    "chk_sec_entropy", "chk_sec_ipsec_health", "chk_sec_ssh_v4_acl", "chk_sec_ssh_v6_acl", "chk_ssh_status", "chk_sec_telnet",
+    "chk_hostname", "chk_svc_dns_lookup", "chk_svc_dns_servers", "chk_svc_errdisable_rec",
+    "chk_flow_tracking", "chk_lanz", "chk_log_persistent", "chk_log_accounting", "chk_log_source_intf", "chk_log_hosts",
+    "chk_path_sel_health", "chk_snmp_status", "chk_vlan_internal"
+]
+
+default_config_rules = [
+    {"Section": "", "Match": "aaa authorization exec default local", "Mode": "exact", "Absent": False, "Description": "AAA authorization"},
+    {"Section": "management api http-commands", "Match": "no shutdown", "Mode": "exact", "Absent": False, "Description": "eAPI enabled"}
+]
+
+DEFAULT_PROFILES = {
+    "🟢 Basic NRFU (Quick Check)": {
+        "keys": ["chk_hw_trans", "chk_hw_cool", "chk_hw_power", "chk_hw_temp", "chk_sys_uptime", "chk_sys_ntp", "chk_int_err", "chk_int_status", "chk_cfg_diff"],
+        "cfg_rules": []
+    },
+    "🔍 Deep NRFU (Full Audit)": {
+        "keys": ALL_TEST_KEYS,
+        "cfg_rules": default_config_rules
+    },
+    "⚡ Minimal Check": {
+        "keys": ["chk_hw_power", "chk_sys_uptime", "chk_int_status"],
+        "cfg_rules": []
+    }
+}
+
+active_profiles = saved_settings.get("profiles", DEFAULT_PROFILES)
+
+# Initialize Session State Keys if not present
+saved_test_keys = saved_settings.get("selected_test_keys", None)
+for k in ALL_TEST_KEYS:
+    if k not in st.session_state:
+        if saved_test_keys is not None:
+            st.session_state[k] = (k in saved_test_keys)
+        else:
+            st.session_state[k] = (k in DEFAULT_PROFILES["🟢 Basic NRFU (Quick Check)"]["keys"])
+
+# ==========================================
+# STREAMLIT SIDEBAR: GLOBAL PROFILE & TAG CONTROLS
+# ==========================================
+with st.sidebar:
+    st.title("⚙️ Profile & Settings")
+    st.caption("Manage active presets & execution tags")
+    
+    st.markdown("---")
+    st.markdown("##### 🎯 Active Profile Presets")
+    
+    selected_prof_name = st.selectbox(
+        "Select Active Profile", 
+        options=list(active_profiles.keys()),
+        key="sb_selected_prof"
+    )
+
+    col_prof1, col_prof2 = st.columns(2)
+    with col_prof1:
+        if st.button("📂 Load", use_container_width=True, type="primary"):
+            p_data = active_profiles.get(selected_prof_name, {})
+            p_keys = set(p_data.get("keys", []))
+            for k in ALL_TEST_KEYS:
+                st.session_state[k] = (k in p_keys)
+            st.session_state.cfg_rules_data = p_data.get("cfg_rules", default_config_rules)
+            save_settings({"selected_test_keys": list(p_keys)})
+            st.success(f"Loaded '{selected_prof_name}'!")
+            st.rerun()
+
+    with col_prof2:
+        if st.button("💾 Save", use_container_width=True):
+            current_keys = [k for k in ALL_TEST_KEYS if st.session_state.get(k, False)]
+            active_profiles[selected_prof_name] = {
+                "keys": current_keys,
+                "cfg_rules": st.session_state.get("cfg_rules_data", default_config_rules)
+            }
+            save_settings({
+                "profiles": active_profiles,
+                "selected_test_keys": current_keys
+            })
+            st.success("Saved!")
+
+    with st.expander("➕ Create / Delete Profile"):
+        new_prof_input = st.text_input("New Profile Name", placeholder="e.g. Leaf Switches", key="sb_new_prof")
+        if st.button("Create Profile", use_container_width=True):
+            if new_prof_input.strip():
+                current_keys = [k for k in ALL_TEST_KEYS if st.session_state.get(k, False)]
+                active_profiles[new_prof_input.strip()] = {
+                    "keys": current_keys,
+                    "cfg_rules": st.session_state.get("cfg_rules_data", default_config_rules)
+                }
+                save_settings({"profiles": active_profiles, "selected_test_keys": current_keys})
+                st.success(f"Created '{new_prof_input.strip()}'!")
+                st.rerun()
+
+        st.divider()
+        del_prof_select = st.selectbox("Delete Profile", options=list(active_profiles.keys()), key="sb_del_prof")
+        if st.button("Delete Profile", use_container_width=True, type="secondary"):
+            if len(active_profiles) > 1:
+                del active_profiles[del_prof_select]
+                save_settings({"profiles": active_profiles})
+                st.success(f"Deleted '{del_prof_select}'!")
+                st.rerun()
+
+    st.markdown("---")
+    st.markdown("##### 🏷️ Filter Tags")
+    st.text_input(
+        "Filter Tags (comma-separated)", 
+        value=saved_settings.get("catalog_tags", ""),
+        placeholder="e.g. leaf, demo",
+        key="input_catalog_tags"
+    )
+
+    st.markdown("---")
+    def toggle_select_all():
+        current_all_selected = all(st.session_state.get(k, False) for k in ALL_TEST_KEYS)
+        new_state = not current_all_selected
+        for k in ALL_TEST_KEYS:
+            st.session_state[k] = new_state
+
+    is_all_selected = all(st.session_state.get(k, False) for k in ALL_TEST_KEYS)
+    select_label = "❌ Deselect All Tests" if is_all_selected else "✅ Select All Tests"
+    st.button(select_label, on_click=toggle_select_all, use_container_width=True)
+
+# ==========================================
+# MAIN APP HEADER & TABS
+# ==========================================
+st.title("🚀 Arista ANTA Web GUI")
+st.markdown("Manage devices, configure tests, and execute network validations.")
 st.divider()
 
-# --- Setup Tabs ---
 tab_dashboard, tab_creds, tab_inventory, tab_catalog, tab_cli = st.tabs([
     "🚀 Dashboard", "🔑 Credentials", "🌐 Manage Inventory", "📋 Manage Tests", "🛠️ Raw CLI"
 ])
@@ -200,167 +344,16 @@ with tab_inventory:
         yaml.safe_dump(new_inv_dict, f, sort_keys=False)
 
 # ==========================================
-# TAB 3: CATALOG (Comprehensive Parameterized Builder)
+# TAB 3: CATALOG BUILDER (Sleek Clean Layout)
 # ==========================================
 with tab_catalog:
     st.subheader("📋 Test Catalog Builder")
-    st.caption("Select tests and customize all operational parameters using the category navigation on the left.")
+    st.caption("Select category navigation on the left to configure test suites.")
 
-    ALL_TEST_KEYS = [
-        "chk_hw_trans", "chk_hw_cool", "chk_hw_power", "chk_hw_temp", "chk_hw_trans_presence", "chk_hw_trans_optics", "chk_hw_pse",
-        "chk_sys_uptime", "chk_sys_ntp", "chk_sys_coredump", "chk_sys_reload", "chk_sys_cpu", "chk_sys_mem",
-        "chk_aaa_authen", "chk_aaa_authz", "chk_aaa_acct_default", "chk_aaa_acct_console",
-        "chk_aaa_tacacs_src", "chk_aaa_tacacs_servers", "chk_aaa_tacacs_groups",
-        "chk_aaa_radius_src", "chk_aaa_radius_servers",
-        "chk_cfg_ztp", "chk_cfg_diff", "chk_cfg_banner",
-        "chk_conn_ping", "chk_conn_lldp",
-        "chk_int_err", "chk_int_disc", "chk_int_status",
-        "chk_int_proxy_arp", "chk_int_ill_lacp", "chk_int_err_dis", "chk_int_util",
-        "chk_int_ber", "chk_int_counter_det", "chk_int_ecn", "chk_int_egress_drop",
-        "chk_int_optics_rx", "chk_int_optics_temp", "chk_int_pfc", "chk_int_speed",
-        "chk_int_trident", "chk_int_voq", "chk_int_vrrp_mac", "chk_int_l2mtu",
-        "chk_int_l3mtu", "chk_int_loopback", "chk_int_port_channel",
-        "chk_int_svi", "chk_int_storm", "chk_int_ipv4",
-        "chk_rt_model", "chk_rt_status", "chk_rt_size", "chk_rt_presence",
-        "chk_bgp_health", "chk_stp_blocked", "chk_stp_tc",
-        "chk_evpn_type5", "chk_vxlan_intf", "chk_vxlan_sanity",
-        "chk_mlag_status", "chk_mlag_interfaces", "chk_mlag_config_sanity", "chk_mlag_reload_delay",
-        "chk_igmp_snooping_global", "chk_igmp_snooping_vlans",
-        "chk_sec_api_http", "chk_sec_api_https_ssl", "chk_sec_api_v4_acl", "chk_sec_api_v6_acl", "chk_sec_ssl_cert",
-        "chk_sec_entropy", "chk_sec_ipsec_health", "chk_sec_ssh_v4_acl", "chk_sec_ssh_v6_acl", "chk_ssh_status", "chk_sec_telnet",
-        "chk_hostname", "chk_svc_dns_lookup", "chk_svc_dns_servers", "chk_svc_errdisable_rec",
-        "chk_flow_tracking", "chk_lanz", "chk_log_persistent", "chk_log_accounting", "chk_log_source_intf", "chk_log_hosts",
-        "chk_path_sel_health", "chk_snmp_status", "chk_vlan_internal"
-    ]
-
-    default_config_rules = [
-        {"Section": "", "Match": "aaa authorization exec default local", "Mode": "exact", "Absent": False, "Description": "AAA authorization"},
-        {"Section": "management api http-commands", "Match": "no shutdown", "Mode": "exact", "Absent": False, "Description": "eAPI enabled"}
-    ]
-
-    DEFAULT_PROFILES = {
-        "🟢 Basic NRFU (Quick Check)": {
-            "keys": ["chk_hw_trans", "chk_hw_cool", "chk_hw_power", "chk_hw_temp", "chk_sys_uptime", "chk_sys_ntp", "chk_int_err", "chk_int_status", "chk_cfg_diff"],
-            "cfg_rules": []
-        },
-        "🔍 Deep NRFU (Full Audit)": {
-            "keys": ALL_TEST_KEYS,
-            "cfg_rules": default_config_rules
-        },
-        "⚡ Minimal Check": {
-            "keys": ["chk_hw_power", "chk_sys_uptime", "chk_int_status"],
-            "cfg_rules": []
-        }
-    }
-
-    active_profiles = saved_settings.get("profiles", DEFAULT_PROFILES)
-
-    # Initialize Session State Keys if not present
-    saved_test_keys = saved_settings.get("selected_test_keys", None)
-    for k in ALL_TEST_KEYS:
-        if k not in st.session_state:
-            if saved_test_keys is not None:
-                st.session_state[k] = (k in saved_test_keys)
-            else:
-                st.session_state[k] = (k in DEFAULT_PROFILES["🟢 Basic NRFU (Quick Check)"]["keys"])
-
-    # --- Profile Toolbar ---
-    with st.container(border=True):
-        st.markdown("##### 🎯 Active Profile Presets")
-        prof_col1, prof_col2, prof_col3 = st.columns([3, 1.5, 1.5])
-
-        with prof_col1:
-            selected_prof_name = st.selectbox(
-                "Active Profile Preset", 
-                options=list(active_profiles.keys()),
-                label_visibility="collapsed"
-            )
-
-        with prof_col2:
-            if st.button("📂 Load Profile", use_container_width=True, type="primary"):
-                p_data = active_profiles.get(selected_prof_name, {})
-                p_keys = set(p_data.get("keys", []))
-                for k in ALL_TEST_KEYS:
-                    st.session_state[k] = (k in p_keys)
-                st.session_state.cfg_rules_data = p_data.get("cfg_rules", default_config_rules)
-                save_settings({"selected_test_keys": list(p_keys)})
-                st.success(f"✅ Loaded '{selected_prof_name}'!")
-                st.rerun()
-
-        with prof_col3:
-            if st.button("💾 Save Changes", use_container_width=True):
-                current_keys = [k for k in ALL_TEST_KEYS if st.session_state.get(k, False)]
-                active_profiles[selected_prof_name] = {
-                    "keys": current_keys,
-                    "cfg_rules": st.session_state.get("cfg_rules_data", default_config_rules)
-                }
-                save_settings({
-                    "profiles": active_profiles,
-                    "selected_test_keys": current_keys
-                })
-                st.success(f"✅ Saved changes to '{selected_prof_name}'!")
-
-        st.divider()
-        c_exp1, c_exp2 = st.columns(2)
-        with c_exp1:
-            with st.expander("➕ Create New Profile"):
-                new_prof_input = st.text_input("New Profile Name", placeholder="e.g. Spine Switches Profile")
-                if st.button("Save Current Selection as New Profile", use_container_width=True):
-                    if new_prof_input.strip():
-                        current_keys = [k for k in ALL_TEST_KEYS if st.session_state.get(k, False)]
-                        active_profiles[new_prof_input.strip()] = {
-                            "keys": current_keys,
-                            "cfg_rules": st.session_state.get("cfg_rules_data", default_config_rules)
-                        }
-                        save_settings({"profiles": active_profiles, "selected_test_keys": current_keys})
-                        st.success(f"✅ Created profile '{new_prof_input.strip()}'!")
-                        st.rerun()
-                    else:
-                        st.error("Please enter a valid profile name.")
-
-        with c_exp2:
-            with st.expander("🗑️ Delete Existing Profile"):
-                del_prof_select = st.selectbox("Select Profile to Delete", options=list(active_profiles.keys()))
-                if st.button("Delete Selected Profile", use_container_width=True, type="secondary"):
-                    if len(active_profiles) > 1:
-                        del active_profiles[del_prof_select]
-                        save_settings({"profiles": active_profiles})
-                        st.success(f"✅ Deleted '{del_prof_select}'!")
-                        st.rerun()
-                    else:
-                        st.error("Cannot delete the last remaining profile.")
-
-    # --- Quick Action Bar ---
-    tb_col1, tb_col2 = st.columns([3, 4])
-    
-    # FIXED TOGGLE SELECT ALL LOGIC
-    def toggle_select_all():
-        current_all_selected = all(st.session_state.get(k, False) for k in ALL_TEST_KEYS)
-        new_state = not current_all_selected
-        for k in ALL_TEST_KEYS:
-            st.session_state[k] = new_state
-
-    with tb_col1:
-        is_all_selected = all(st.session_state.get(k, False) for k in ALL_TEST_KEYS)
-        select_label = "❌ Deselect All Tests" if is_all_selected else "✅ Select All Tests"
-        st.button(select_label, on_click=toggle_select_all, use_container_width=True)
-
-    with tb_col2:
-        test_tags_input = st.text_input(
-            "Filter Tags", 
-            value=saved_settings.get("catalog_tags", ""),
-            placeholder="🏷️ Filter Tags (e.g. leaf, demo)",
-            key="input_catalog_tags",
-            label_visibility="collapsed"
-        )
-
-    st.divider()
-
-    # --- MASTER-DETAIL LAYOUT (LEFT: CATEGORIES, RIGHT: SUB-TESTS & PARAMETERS) ---
-    nav_side_col, main_content_col = st.columns([1.3, 3.2], gap="large")
+    nav_side_col, main_content_col = st.columns([1.1, 3.5], gap="large")
 
     with nav_side_col:
-        st.markdown("### 📂 Categories")
+        st.markdown("#### 📂 Categories")
         categories_map = {
             "🔌 Hardware": "Hardware",
             "💻 System": "System",
@@ -386,7 +379,7 @@ with tab_catalog:
         }
 
         selected_cat_label = st.radio(
-            "Select Test Category",
+            "Select Category",
             options=list(categories_map.keys()),
             label_visibility="collapsed"
         )
@@ -395,7 +388,6 @@ with tab_catalog:
     with main_content_col:
         st.markdown(f"### {selected_cat_label}")
         
-        # Helper to sync Checkbox value with Session State
         def bind_checkbox(label, key):
             return st.checkbox(label, value=st.session_state.get(key, False), key=key)
 
