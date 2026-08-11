@@ -35,7 +35,6 @@ ALL_TEST_KEYS = [
     # AAA
     "chk_aaa_authen", "chk_aaa_authz", "chk_aaa_acct_default", "chk_aaa_acct_console",
     "chk_aaa_tacacs_src", "chk_aaa_tacacs_servers", "chk_aaa_tacacs_groups",
-    "chk_aaa_radius_src", "chk_aaa_radius_servers",
     # AVT & BFD
     "chk_avt_path", "chk_avt_role", "chk_avt_specific_path",
     "chk_bfd_health", "chk_bfd_intervals", "chk_bfd_protocols", "chk_bfd_specific",
@@ -278,9 +277,6 @@ with tab_catalog:
             if st.session_state.get("chk_aaa_tacacs_groups"):
                 st.text_input("TACACS Group Names (comma-separated)", value=st.session_state.get("param_aaa_tacacs_groups_val", "TACACS-SERVERS"), key="param_aaa_tacacs_groups_val")
 
-            bind_cb("Verify RADIUS Source Intf (`VerifyRadiusSourceIntf`)", "chk_aaa_radius_src")
-            bind_cb("Verify RADIUS Servers (`VerifyRadiusServers`)", "chk_aaa_radius_servers")
-
         elif selected_cat == "AVT_BFD":
             bind_cb("Verify AVT Path Health (`VerifyAVTPathHealth`)", "chk_avt_path")
             
@@ -299,15 +295,18 @@ with tab_catalog:
             
             bind_cb("Verify BFD Peers Intervals (`VerifyBFDPeersIntervals`)", "chk_bfd_intervals")
             if st.session_state.get("chk_bfd_intervals"):
-                col1, col2 = st.columns(2)
-                with col1: st.text_input("BFD Peer Address", value=st.session_state.get("param_bfd_peer_ip", "10.0.0.1"), key="param_bfd_peer_ip")
-                with col2: st.text_input("BFD Peer VRF", value=st.session_state.get("param_bfd_peer_vrf", "default"), key="param_bfd_peer_vrf")
+                col1, col2, col3, col4 = st.columns(4)
+                with col1: st.text_input("BFD Peer Address", value=st.session_state.get("param_bfd_int_ip", "10.0.0.1"), key="param_bfd_int_ip")
+                with col2: st.text_input("BFD Peer VRF", value=st.session_state.get("param_bfd_int_vrf", "default"), key="param_bfd_int_vrf")
+                with col3: st.number_input("Tx Interval (ms)", value=st.session_state.get("param_bfd_tx", 300), key="param_bfd_tx")
+                with col4: st.number_input("Rx Interval (ms)", value=st.session_state.get("param_bfd_rx", 300), key="param_bfd_rx")
 
             bind_cb("Verify BFD Reg Protocols (`VerifyBFDPeersRegProtocols`)", "chk_bfd_protocols")
             if st.session_state.get("chk_bfd_protocols"):
-                col1, col2 = st.columns(2)
+                col1, col2, col3 = st.columns(3)
                 with col1: st.text_input("BFD Reg Protocol Address", value=st.session_state.get("param_bfd_proto_ip", "10.0.0.1"), key="param_bfd_proto_ip")
                 with col2: st.text_input("BFD Reg Protocol VRF", value=st.session_state.get("param_bfd_proto_vrf", "default"), key="param_bfd_proto_vrf")
+                with col3: st.text_input("Protocols (comma-separated)", value=st.session_state.get("param_bfd_proto_list", "bgp"), key="param_bfd_proto_list")
 
             bind_cb("Verify BFD Specific Peers (`VerifyBFDSpecificPeers`)", "chk_bfd_specific")
             if st.session_state.get("chk_bfd_specific"):
@@ -343,20 +342,27 @@ with tab_catalog:
         elif selected_cat == "Connectivity":
             bind_cb("Verify LLDP Neighbors (`VerifyLLDPNeighbors`)", "chk_conn_lldp")
             if st.session_state.get("chk_conn_lldp"):
-                col1, col2 = st.columns(2)
+                col1, col2, col3 = st.columns(3)
                 with col1: st.text_input("LLDP Local Port", value=st.session_state.get("param_conn_lldp_port", "Ethernet1"), key="param_conn_lldp_port")
                 with col2: st.text_input("Neighbor Device Name", value=st.session_state.get("param_conn_lldp_dev", "switch2"), key="param_conn_lldp_dev")
-            
+                with col3: st.text_input("Neighbor Port", value=st.session_state.get("param_conn_lldp_neighbor_port", "Ethernet1"), key="param_conn_lldp_neighbor_port")
+
             bind_cb("Verify Reachability (`VerifyReachability`)", "chk_conn_ping")
             if st.session_state.get("chk_conn_ping"):
                 st.text_input("Ping Destination IP(s) (comma-separated)", value=st.session_state.get("param_conn_dest", "8.8.8.8"), key="param_conn_dest")
 
         elif selected_cat == "CVX":
             bind_cb("Verify Active CVX Connections (`VerifyActiveCVXConnections`)", "chk_cvx_active")
+            if st.session_state.get("chk_cvx_active"):
+                st.number_input("Connections Count", value=st.session_state.get("param_cvx_active_cnt", 1), key="param_cvx_active_cnt")
+
             bind_cb("Verify CVX Cluster Status (`VerifyCVXClusterStatus`)", "chk_cvx_cluster")
             bind_cb("Verify Management CVX (`VerifyManagementCVX`)", "chk_cvx_mgmt")
             bind_cb("Verify MCS Client Mounts (`VerifyMcsClientMounts`)", "chk_cvx_client_mounts")
+            
             bind_cb("Verify MCS Server Mounts (`VerifyMcsServerMounts`)", "chk_cvx_server_mounts")
+            if st.session_state.get("chk_cvx_server_mounts"):
+                st.number_input("Server Mounts Count", value=st.session_state.get("param_cvx_mcs_cnt", 1), key="param_cvx_mcs_cnt")
 
         elif selected_cat == "EVPN_VXLAN":
             bind_cb("Verify EVPN Type 5 Routes (`VerifyEVPNType5Routes`)", "chk_evpn_type5")
@@ -387,11 +393,15 @@ with tab_catalog:
         elif selected_cat == "Hardware":
             bind_cb("Verify Linecards Absence (`VerifyAbsenceOfLinecards`)", "chk_hw_linecards")
             if st.session_state.get("chk_hw_linecards"):
-                st.text_input("Linecards / Slots (comma-separated)", value=st.session_state.get("param_hw_linecards_val", "Linecard1"), key="param_hw_linecards_val")
+                st.text_input("Serial Numbers (comma-separated)", value=st.session_state.get("param_hw_linecards_sn", "SN12345"), key="param_hw_linecards_sn")
 
             bind_cb("Verify Adverse Drops (`VerifyAdverseDrops`)", "chk_hw_drops")
             bind_cb("Verify Chassis Health (`VerifyChassisHealth`)", "chk_hw_chassis")
+            
             bind_cb("Verify Environment Cooling (`VerifyEnvironmentCooling`)", "chk_hw_cooling_fans")
+            if st.session_state.get("chk_hw_cooling_fans"):
+                st.text_input("Accepted Cooling States", value=st.session_state.get("param_hw_cooling_states", "ok"), key="param_hw_cooling_states")
+
             bind_cb("Verify Environment Power (`VerifyEnvironmentPower`)", "chk_hw_power")
             bind_cb("Verify Environment System Cooling (`VerifyEnvironmentSystemCooling`)", "chk_hw_sys_cooling")
             bind_cb("Verify Hardware Capacity (`VerifyHardwareCapacityUtilization`)", "chk_hw_capacity")
@@ -640,8 +650,7 @@ with tab_catalog:
             bind_cb("Verify SNMP IPv6 ACL (`VerifySnmpIPv6Acl`)", "chk_snmp_v6_acl")
             if st.session_state.get("chk_snmp_v6_acl"):
                 col1, col2 = st.columns(2)
-                with col1: st.text_input("SNMP IPv6 ACL Name", value=st.session_state.get("param_snmp_v6_acl_name", "ACL-SNMP-V6"), key="param_snmp_v6_acl_name")
-                with col2: st.text_input("VRF", value=st.session_state.get("param_snmp_v6_acl_vrf", "default"), key="param_snmp_v6_acl_vrf")
+                with col1: st.text_input("SNMP IPv6 ACL Name", value=st.session_state.get("param_snmp_v6_acl_name", "ACL-SNMP-V6"), key="param_snmp_v6_acl_vrf", default="default")
 
             bind_cb("Verify SNMP Location (`VerifySnmpLocation`)", "chk_snmp_location")
             if st.session_state.get("chk_snmp_location"):
@@ -733,7 +742,7 @@ with tab_catalog:
         if parsed_tags: body["filters"] = {"tags": parsed_tags}
         catalog_dict[module].append({test_name: body if body else None})
 
-    # Key to Module & Test Class mappings
+    # Key to Module & Test Class mappings with fixed schema inputs
     key_to_test_map = {
         "chk_aaa_authen": ("anta.tests.aaa", "VerifyAuthenMethods", {
             "methods": [m.strip() for m in st.session_state.get("param_aaa_authen_methods", "local").split(",") if m.strip()],
@@ -754,16 +763,33 @@ with tab_catalog:
         "chk_aaa_tacacs_src": ("anta.tests.aaa", "VerifyTacacsSourceIntf", {"intf": st.session_state.get("param_aaa_tacacs_intf", "Management1")}),
         "chk_aaa_tacacs_servers": ("anta.tests.aaa", "VerifyTacacsServers", {"servers": [ip.strip() for ip in st.session_state.get("param_aaa_tacacs_ips", "10.1.1.1").split(",") if ip.strip()]}),
         "chk_aaa_tacacs_groups": ("anta.tests.aaa", "VerifyTacacsServerGroups", {"groups": [g.strip() for g in st.session_state.get("param_aaa_tacacs_groups_val", "TACACS-SERVERS").split(",") if g.strip()]}),
-        "chk_aaa_radius_src": ("anta.tests.aaa", "VerifyRadiusSourceIntf", {"intf": st.session_state.get("param_aaa_radius_intf", "Management1")}),
-        "chk_aaa_radius_servers": ("anta.tests.aaa", "VerifyRadiusServers", {"servers": [ip.strip() for ip in st.session_state.get("param_aaa_radius_ips", "10.2.2.1").split(",") if ip.strip()]}),
         
         "chk_avt_path": ("anta.tests.avt", "VerifyAVTPathHealth", None),
         "chk_avt_role": ("anta.tests.avt", "VerifyAVTRole", {"role": st.session_state.get("param_avt_role_val", "edge")}),
         "chk_avt_specific_path": ("anta.tests.avt", "VerifyAVTSpecificPath", {"avt_paths": [{"destination": st.session_state.get("param_avt_spec_dest", "10.0.0.1"), "vrf": st.session_state.get("param_avt_spec_vrf", "default")}]}),
         "chk_bfd_health": ("anta.tests.bfd", "VerifyBFDPeersHealth", None),
-        "chk_bfd_intervals": ("anta.tests.bfd", "VerifyBFDPeersIntervals", {"bfd_peers": [{"peer_address": st.session_state.get("param_bfd_peer_ip", "10.0.0.1"), "vrf": st.session_state.get("param_bfd_peer_vrf", "default")}]}),
-        "chk_bfd_protocols": ("anta.tests.bfd", "VerifyBFDPeersRegProtocols", {"bfd_peers": [{"peer_address": st.session_state.get("param_bfd_proto_ip", "10.0.0.1"), "vrf": st.session_state.get("param_bfd_proto_vrf", "default")}]}),
-        "chk_bfd_specific": ("anta.tests.bfd", "VerifyBFDSpecificPeers", {"bfd_peers": [{"peer_address": st.session_state.get("param_bfd_spec_ip", "10.0.0.1"), "vrf": st.session_state.get("param_bfd_spec_vrf", "default")}]}),
+        "chk_bfd_intervals": ("anta.tests.bfd", "VerifyBFDPeersIntervals", {
+            "bfd_peers": [{
+                "peer_address": st.session_state.get("param_bfd_int_ip", "10.0.0.1"),
+                "vrf": st.session_state.get("param_bfd_int_vrf", "default"),
+                "tx_interval": int(st.session_state.get("param_bfd_tx", 300)),
+                "rx_interval": int(st.session_state.get("param_bfd_rx", 300)),
+                "multiplier": int(st.session_state.get("param_bfd_mult", 3))
+            }]
+        }),
+        "chk_bfd_protocols": ("anta.tests.bfd", "VerifyBFDPeersRegProtocols", {
+            "bfd_peers": [{
+                "peer_address": st.session_state.get("param_bfd_proto_ip", "10.0.0.1"),
+                "vrf": st.session_state.get("param_bfd_proto_vrf", "default"),
+                "protocols": [p.strip() for p in st.session_state.get("param_bfd_proto_list", "bgp").split(",") if p.strip()]
+            }]
+        }),
+        "chk_bfd_specific": ("anta.tests.bfd", "VerifyBFDSpecificPeers", {
+            "bfd_peers": [{
+                "peer_address": st.session_state.get("param_bfd_spec_ip", "10.0.0.1"),
+                "vrf": st.session_state.get("param_bfd_spec_vrf", "default")
+            }]
+        }),
 
         "chk_cfg_diff": ("anta.tests.configuration", "VerifyRunningConfigDiffs", None),
         "chk_cfg_lines": ("anta.tests.configuration", "VerifyRunningConfigLines", {"regex_patterns": [l.strip() for l in st.session_state.get("param_cfg_lines_regex", "router bgp").split(",") if l.strip()]}),
@@ -771,14 +797,20 @@ with tab_catalog:
         "chk_cfg_banner_login": ("anta.tests.security", "VerifyBannerLogin", {"login_banner": st.session_state.get("param_banner_login_text", "Authorized Access Only")}),
         "chk_cfg_banner_motd": ("anta.tests.security", "VerifyBannerMotd", {"motd_banner": st.session_state.get("param_banner_motd_text", "Welcome")}),
 
-        "chk_conn_lldp": ("anta.tests.connectivity", "VerifyLLDPNeighbors", {"neighbors": [{"port": st.session_state.get("param_conn_lldp_port", "Ethernet1"), "neighbor_device": st.session_state.get("param_conn_lldp_dev", "switch2")}]}),
+        "chk_conn_lldp": ("anta.tests.connectivity", "VerifyLLDPNeighbors", {
+            "neighbors": [{
+                "port": st.session_state.get("param_conn_lldp_port", "Ethernet1"),
+                "neighbor_device": st.session_state.get("param_conn_lldp_dev", "switch2"),
+                "neighbor_port": st.session_state.get("param_conn_lldp_neighbor_port", "Ethernet1")
+            }]
+        }),
         "chk_conn_ping": ("anta.tests.connectivity", "VerifyReachability", {"hosts": [{"destination": dest.strip()} for dest in st.session_state.get("param_conn_dest", "8.8.8.8").split(",") if dest.strip()]}),
 
-        "chk_cvx_active": ("anta.tests.cvx", "VerifyActiveCVXConnections", None),
+        "chk_cvx_active": ("anta.tests.cvx", "VerifyActiveCVXConnections", {"connections_count": int(st.session_state.get("param_cvx_active_cnt", 1))}),
         "chk_cvx_cluster": ("anta.tests.cvx", "VerifyCVXClusterStatus", None),
         "chk_cvx_mgmt": ("anta.tests.cvx", "VerifyManagementCVX", None),
         "chk_cvx_client_mounts": ("anta.tests.cvx", "VerifyMcsClientMounts", None),
-        "chk_cvx_server_mounts": ("anta.tests.cvx", "VerifyMcsServerMounts", None),
+        "chk_cvx_server_mounts": ("anta.tests.cvx", "VerifyMcsServerMounts", {"connections_count": int(st.session_state.get("param_cvx_mcs_cnt", 1))}),
 
         "chk_evpn_type5": ("anta.tests.evpn", "VerifyEVPNType5Routes", {"prefixes": [{"address": st.session_state.get("param_evpn_prefix", "10.0.0.0/24"), "vni": int(st.session_state.get("param_evpn_vni", 10010))}]}),
         "chk_fn_fn44": ("anta.tests.field_notices", "VerifyFieldNotice44Resolution", None),
@@ -787,10 +819,10 @@ with tab_catalog:
         "chk_greent_policy": ("anta.tests.greent", "VerifyGreenT", None),
         "chk_greent_counters": ("anta.tests.greent", "VerifyGreenTCounters", None),
 
-        "chk_hw_linecards": ("anta.tests.hardware", "VerifyAbsenceOfLinecards", {"linecards": [lc.strip() for lc in st.session_state.get("param_hw_linecards_val", "Linecard1").split(",") if lc.strip()]}),
+        "chk_hw_linecards": ("anta.tests.hardware", "VerifyAbsenceOfLinecards", {"serial_numbers": [sn.strip() for sn in st.session_state.get("param_hw_linecards_sn", "SN12345").split(",") if sn.strip()]}),
         "chk_hw_drops": ("anta.tests.hardware", "VerifyAdverseDrops", None),
         "chk_hw_chassis": ("anta.tests.hardware", "VerifyChassisHealth", None),
-        "chk_hw_cooling_fans": ("anta.tests.hardware", "VerifyEnvironmentCooling", None),
+        "chk_hw_cooling_fans": ("anta.tests.hardware", "VerifyEnvironmentCooling", {"states": [s.strip() for s in st.session_state.get("param_hw_cooling_states", "ok").split(",") if s.strip()]}),
         "chk_hw_power": ("anta.tests.hardware", "VerifyEnvironmentPower", {"states": ["ok"]}),
         "chk_hw_sys_cooling": ("anta.tests.hardware", "VerifyEnvironmentSystemCooling", None),
         "chk_hw_capacity": ("anta.tests.hardware", "VerifyHardwareCapacityUtilization", None),
@@ -841,7 +873,7 @@ with tab_catalog:
         "chk_snmp_v4_acl": ("anta.tests.snmp", "VerifySnmpIPv4Acl", {"access_list": st.session_state.get("param_snmp_v4_acl_name", "ACL-SNMP-V4"), "vrf": st.session_state.get("param_snmp_v4_acl_vrf", "default")}),
         "chk_snmp_v6_acl": ("anta.tests.snmp", "VerifySnmpIPv6Acl", {"access_list": st.session_state.get("param_snmp_v6_acl_name", "ACL-SNMP-V6"), "vrf": st.session_state.get("param_snmp_v6_acl_vrf", "default")}),
         "chk_snmp_status": ("anta.tests.snmp", "VerifySnmpStatus", {"vrf": st.session_state.get("param_snmp_vrf", "default")}),
-        "chk_sec_v4_acl": ("anta.tests.security", "VerifyIPv4ACL", {"acl": st.session_state.get("param_sec_v4_acl_name", "ACL-MGMT")}),
+        "chk_sec_v4_acl": ("anta.tests.security", "VerifyIPv4ACL", {"ipv4_access_lists": [{"name": st.session_state.get("param_sec_v4_acl_name", "ACL-MGMT")}]}),
         "chk_svc_dns_lookup": ("anta.tests.services", "VerifyDNSLookup", {"domain_names": [d.strip() for d in st.session_state.get("param_svc_dns_domains", "arista.com").split(",") if d.strip()]}),
         "chk_svc_dns_servers": ("anta.tests.services", "VerifyDNSServers", {"dns_servers": [{"server": ip.strip(), "vrf": st.session_state.get("param_svc_dns_vrf", "default")} for ip in st.session_state.get("param_svc_dns_ips", "8.8.8.8").split(",") if ip.strip()]}),
         "chk_stun_status": ("anta.tests.stun", "VerifyStunServer", {"server": st.session_state.get("param_stun_server", "stun.l.google.com")}),
@@ -886,7 +918,7 @@ with tab_catalog:
         if st.session_state.get(k, False):
             add_test(mod, test_cls, params)
 
-    # --- PER-TEST PRE-VALIDATION LOGIC (FULL DETAILED TRACE) ---
+    # --- PER-TEST PRE-VALIDATION LOGIC ---
     valid_catalog_dict = {}
     invalid_config_results = []
 
@@ -1040,7 +1072,6 @@ with tab_dashboard:
                                         cat_display = ", ".join(row['categories']) if isinstance(row['categories'], list) else row['categories']
                                         st.caption(f"**Category:** {cat_display}")
                                     
-                                    # Render un-truncated full Pydantic trace if Pre-Validator error
                                     if device_name == "Catalog Pre-Validator":
                                         st.code(row['full_message'], language="text")
                                     else:
