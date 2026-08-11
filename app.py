@@ -360,9 +360,14 @@ with tab_catalog:
 
             bind_cb("Verify CVX Cluster Status (`VerifyCVXClusterStatus`)", "chk_cvx_cluster")
             if st.session_state.get("chk_cvx_cluster"):
-                st.selectbox("CVX Peer Status", ["reachable", "joined"], key="param_cvx_peer_status")
+                col1, col2 = st.columns(2)
+                with col1: st.text_input("CVX Peer Address", value=st.session_state.get("param_cvx_peer_ip", "10.0.0.1"), key="param_cvx_peer_ip")
+                with col2: st.selectbox("CVX Peer Status", ["reachable", "joined"], key="param_cvx_peer_status")
 
             bind_cb("Verify Management CVX (`VerifyManagementCVX`)", "chk_cvx_mgmt")
+            if st.session_state.get("chk_cvx_mgmt"):
+                st.checkbox("Management CVX Enabled", value=st.session_state.get("param_cvx_mgmt_enabled", True), key="param_cvx_mgmt_enabled")
+
             bind_cb("Verify MCS Client Mounts (`VerifyMcsClientMounts`)", "chk_cvx_client_mounts")
             
             bind_cb("Verify MCS Server Mounts (`VerifyMcsServerMounts`)", "chk_cvx_server_mounts")
@@ -748,7 +753,7 @@ with tab_catalog:
         if parsed_tags: body["filters"] = {"tags": parsed_tags}
         catalog_dict[module].append({test_name: body if body else None})
 
-    # Key to Module & Test Class mappings
+    # Key to Module & Test Class mappings with fixed schemas
     key_to_test_map = {
         "chk_aaa_authen": ("anta.tests.aaa", "VerifyAuthenMethods", {
             "methods": [m.strip() for m in st.session_state.get("param_aaa_authen_methods", "local").split(",") if m.strip()],
@@ -820,8 +825,8 @@ with tab_catalog:
         "chk_conn_ping": ("anta.tests.connectivity", "VerifyReachability", {"hosts": [{"destination": dest.strip()} for dest in st.session_state.get("param_conn_dest", "8.8.8.8").split(",") if dest.strip()]}),
 
         "chk_cvx_active": ("anta.tests.cvx", "VerifyActiveCVXConnections", {"connections_count": int(st.session_state.get("param_cvx_active_cnt", 1))}),
-        "chk_cvx_cluster": ("anta.tests.cvx", "VerifyCVXClusterStatus", {"peer_status": [st.session_state.get("param_cvx_peer_status", "reachable")]}),
-        "chk_cvx_mgmt": ("anta.tests.cvx", "VerifyManagementCVX", None),
+        "chk_cvx_cluster": ("anta.tests.cvx", "VerifyCVXClusterStatus", {"peer_status": [{"peer_address": st.session_state.get("param_cvx_peer_ip", "10.0.0.1"), "status": st.session_state.get("param_cvx_peer_status", "reachable")}]}),
+        "chk_cvx_mgmt": ("anta.tests.cvx", "VerifyManagementCVX", {"enabled": bool(st.session_state.get("param_cvx_mgmt_enabled", True))}),
         "chk_cvx_client_mounts": ("anta.tests.cvx", "VerifyMcsClientMounts", None),
         "chk_cvx_server_mounts": ("anta.tests.cvx", "VerifyMcsServerMounts", {"connections_count": int(st.session_state.get("param_cvx_mcs_cnt", 1))}),
 
