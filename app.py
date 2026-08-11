@@ -5,6 +5,7 @@ import pandas as pd
 import yaml
 import os
 import re
+from anta.catalog import AntaCatalog
 
 # Configure the web page layout
 st.set_page_config(page_title="ANTA Dashboard", layout="wide", initial_sidebar_state="expanded")
@@ -476,7 +477,7 @@ with tab_catalog:
             bind_cb("Verify Specific Path (`VerifySpecificPath`)", "chk_path_sel_specific")
             st.divider()
             bind_cb("Verify TCAM Profile (`VerifyTcamProfile`)", "chk_tcam_profile")
-            bind_cb("Verify UFT Mode (`VerifyUnifiedForwardingTableMode`)", "chk_uft_mode")
+            bind_cb("Verify Unified Forwarding Table Mode (`VerifyUnifiedForwardingTableMode`)", "chk_uft_mode")
 
         elif selected_cat == "PTP":
             bind_cb("Verify PTP Grandmaster (`VerifyPtpGMStatus`)", "chk_ptp_gm")
@@ -855,9 +856,38 @@ with tab_catalog:
         if st.session_state.get(k, False):
             add_test(mod, test_cls, params)
 
+    # --- PER-TEST PRE-VALIDATION LOGIC ---
+    valid_catalog_dict = {}
+    invalid_config_results = []
+
+    for module_name, tests_list in catalog_dict.items():
+        for test_entry in tests_list:
+            single_test_catalog = {module_name: [test_entry]}
+            try:
+                # Test validity against ANTA Catalog model
+                AntaCatalog.from_dict(single_test_catalog)
+                
+                if module_name not in valid_catalog_dict:
+                    valid_catalog_dict[module_name] = []
+                valid_catalog_dict[module_name].append(test_entry)
+                
+            except Exception as err:
+                # Extract class name and error message
+                test_cls_name = list(test_entry.keys())[0] if isinstance(test_entry, dict) else str(test_entry)
+                err_msg = str(err).split("\n")[0]
+                
+                invalid_config_results.append({
+                    "name": "Catalog Pre-Validator",
+                    "categories": [module_name],
+                    "description": f"{test_cls_name} (Invalid Config/Missing Parameters)",
+                    "result": "error",
+                    "messages": [f"Validation Error: {err_msg}"]
+                })
+
     try:
-        with open("catalog.yml", "w") as f: yaml.safe_dump(catalog_dict, f, sort_keys=False)
+        with open("catalog.yml", "w") as f: yaml.safe_dump(valid_catalog_dict, f, sort_keys=False)
         save_settings({"selected_test_keys": [k for k in ALL_TEST_KEYS if st.session_state.get(k, False)]})
+        st.session_state["invalid_config_results"] = invalid_config_results
     except Exception as e: st.error(f"Save error: {e}")
 
 # ==========================================
@@ -907,29 +937,34 @@ with tab_dashboard:
                     except json.JSONDecodeError:
                         pass
                 
-                if "ValidationError" in full_log or "CRITICAL Failed to parse the catalog" in full_log:
-                    st.error("🚨 **Catalog Validation Error (ValidationError)**\nOne of the selected tests requires additional parameters or has invalid inputs. Expand the log below to see which test failed validation.")
-                    with st.expander("View Validation Error Details", expanded=True):
-                        st.code(full_log, language=None)
+                # Retrieve invalid pre-validation results from session state
+                invalid_pre_results = st.session_state.get("invalid_config_results", [])
                 
-                elif "No tests scheduled to run" in full_log:
-                    st.warning("⚠️ **Notice:** ANTA skipped running tests because a tag filter in the catalog or execution filter does not match any device in Inventory.")
-                
-                elif not data:
-                    st.error("No test results received from ANTA. Please ensure tests are selected and tag filters are correct.")
-                    with st.expander("View Full Raw Output"):
-                        st.code(full_log, language=None)
+                if not data and not invalid_pre_results:
+                    if "No tests scheduled to run" in full_log:
+                        st.warning("⚠️ **Notice:** ANTA skipped running tests because a tag filter in the catalog or execution filter does not match any device in Inventory.")
+                    else:
+                        st.error("No test results received from ANTA. Please ensure tests are selected and tag filters are correct.")
+                        with st.expander("View Full Raw Output"):
+                            st.code(full_log, language=None)
                 else:
-                    df = pd.DataFrame(data)
+                    df_anta = pd.DataFrame(data) if data else pd.DataFrame()
                     
-                    if 'messages' in df.columns:
-                        df['messages'] = df['messages'].apply(lambda x: ", ".join(x) if isinstance(x, list) else x)
+                    if not df_anta.empty and 'messages' in df_anta.columns:
+                        df_anta['messages'] = df_anta['messages'].apply(lambda x: ", ".join(x) if isinstance(x, list) else x)
+                    
+                    if invalid_pre_results:
+                        df_invalid = pd.DataFrame(invalid_pre_results)
+                        df_invalid['messages'] = df_invalid['messages'].apply(lambda x: ", ".join(x) if isinstance(x, list) else x)
+                        df = pd.concat([df_anta, df_invalid], ignore_index=True)
+                    else:
+                        df = df_anta
                     
                     total_tests = len(df)
-                    passed = len(df[df['result'] == 'success'])
-                    failed = len(df[df['result'] == 'failure'])
-                    error = len(df[df['result'] == 'error']) if 'error' in df['result'].values else 0
-                    skipped = len(df[df['result'] == 'skipped']) if 'skipped' in df['result'].values else 0
+                    passed = len(df[df['result'] == 'success']) if 'result' in df.columns else 0
+                    failed = len(df[df['result'] == 'failure']) if 'result' in df.columns else 0
+                    error = len(df[df['result'] == 'error']) if 'result' in df.columns else 0
+                    skipped = len(df[df['result'] == 'skipped']) if 'result' in df.columns else 0
                     
                     st.subheader("📊 Test Summary")
                     col1, col2, col3, col4 = st.columns(4)
