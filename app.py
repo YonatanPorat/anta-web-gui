@@ -29,10 +29,11 @@ def save_settings(data_dict):
 
 saved_settings = load_settings()
 
-# Define all available test keys
+# Define all available test keys including new additions
 ALL_TEST_KEYS = [
     "chk_hw_trans", "chk_hw_cool", "chk_hw_power", "chk_hw_temp", "chk_hw_trans_presence", "chk_hw_trans_optics", "chk_hw_pse",
     "chk_sys_uptime", "chk_sys_ntp", "chk_sys_coredump", "chk_sys_reload", "chk_sys_cpu", "chk_sys_mem",
+    "chk_sw_version", "chk_sw_bootloader",
     "chk_aaa_authen", "chk_aaa_authz", "chk_aaa_acct_default", "chk_aaa_acct_console",
     "chk_aaa_tacacs_src", "chk_aaa_tacacs_servers", "chk_aaa_tacacs_groups",
     "chk_aaa_radius_src", "chk_aaa_radius_servers",
@@ -46,15 +47,17 @@ ALL_TEST_KEYS = [
     "chk_int_l3mtu", "chk_int_loopback", "chk_int_port_channel",
     "chk_int_svi", "chk_int_storm", "chk_int_ipv4",
     "chk_rt_model", "chk_rt_status", "chk_rt_size", "chk_rt_presence",
-    "chk_bgp_health", "chk_stp_blocked", "chk_stp_tc",
-    "chk_evpn_type5", "chk_vxlan_intf", "chk_vxlan_sanity",
+    "chk_bgp_health", "chk_stp_blocked", "chk_stp_tc", "chk_stp_root", "chk_stp_mode",
+    "chk_evpn_type5", "chk_vxlan_intf", "chk_vxlan_sanity", "chk_vtep_peers",
     "chk_mlag_status", "chk_mlag_interfaces", "chk_mlag_config_sanity", "chk_mlag_reload_delay",
     "chk_igmp_snooping_global", "chk_igmp_snooping_vlans",
     "chk_sec_api_http", "chk_sec_api_https_ssl", "chk_sec_api_v4_acl", "chk_sec_api_v6_acl", "chk_sec_ssl_cert",
     "chk_sec_entropy", "chk_sec_ipsec_health", "chk_sec_ssh_v4_acl", "chk_sec_ssh_v6_acl", "chk_ssh_status", "chk_sec_telnet",
+    "chk_stun_status",
     "chk_hostname", "chk_svc_dns_lookup", "chk_svc_dns_servers", "chk_svc_errdisable_rec",
     "chk_flow_tracking", "chk_lanz", "chk_log_persistent", "chk_log_accounting", "chk_log_source_intf", "chk_log_hosts",
-    "chk_path_sel_health", "chk_snmp_status", "chk_vlan_internal"
+    "chk_path_sel_health", "chk_snmp_status", "chk_snmp_community",
+    "chk_vlan_internal", "chk_vlans_status"
 ]
 
 default_config_rules = [
@@ -357,6 +360,7 @@ with tab_catalog:
         categories_map = {
             "🔌 Hardware": "Hardware",
             "💻 System": "System",
+            "💿 Software": "Software",
             "🔐 AAA Suite": "AAA",
             "⚙️ Configuration": "Configuration",
             "🌐 Connectivity": "Connectivity",
@@ -368,6 +372,7 @@ with tab_catalog:
             "🤝 MLAG": "MLAG",
             "📡 Multicast": "Multicast",
             "🔒 Security": "Security",
+            "📞 STUN": "STUN",
             "🛠️ Services": "Services",
             "🌊 Flow Tracking": "Flow Tracking",
             "📊 LANZ": "LANZ",
@@ -438,7 +443,16 @@ with tab_catalog:
             chk_sys_mem = bind_checkbox("Verify Memory Utilization (`VerifyMemoryUtilization`)", key="chk_sys_mem")
             st.number_input("Max Allowed Memory Utilization (%)", value=st.session_state.get("param_sys_mem_val", 80), min_value=1, max_value=100, key="param_sys_mem_val", disabled=not chk_sys_mem)
 
-        # 3. AAA
+        # 3. SOFTWARE
+        elif selected_cat == "Software":
+            chk_sw_version = bind_checkbox("Verify EOS Version (`VerifyEOSVersion`)", key="chk_sw_version")
+            st.text_input("Expected EOS Version (e.g. 4.30.2F)", value=st.session_state.get("param_sw_version_val", "4.30.2F"), key="param_sw_version_val", disabled=not chk_sw_version)
+
+            st.divider()
+            chk_sw_bootloader = bind_checkbox("Verify Bootloader Version (`VerifyBootloaderVersion`)", key="chk_sw_bootloader")
+            st.text_input("Expected Bootloader Version", value=st.session_state.get("param_sw_bootloader_val", ""), key="param_sw_bootloader_val", disabled=not chk_sw_bootloader)
+
+        # 4. AAA
         elif selected_cat == "AAA":
             chk_aaa_authen = bind_checkbox("Verify Authentication Methods (`VerifyAuthenMethods`)", key="chk_aaa_authen")
             c_a1, c_a2 = st.columns(2)
@@ -481,7 +495,7 @@ with tab_catalog:
             chk_aaa_radius_servers = bind_checkbox("Verify RADIUS Servers (`VerifyRadiusServers`)", key="chk_aaa_radius_servers")
             st.text_input("RADIUS Server IPs (comma-separated)", value=st.session_state.get("param_aaa_radius_srv_ips", "10.2.2.1"), key="param_aaa_radius_srv_ips", disabled=not chk_aaa_radius_servers)
 
-        # 4. CONFIGURATION
+        # 5. CONFIGURATION
         elif selected_cat == "Configuration":
             st.markdown("##### Dynamic Running Config Rules (`VerifyRunningConfig`)")
             if "cfg_rules_data" not in st.session_state:
@@ -514,7 +528,7 @@ with tab_catalog:
             with c_bn1: st.selectbox("Banner Type", ["login", "motd"], key="param_cfg_banner_type", disabled=not chk_cfg_banner)
             with c_bn2: st.text_input("Expected Banner Text", value=st.session_state.get("param_cfg_banner_text", "Authorized Access Only"), key="param_cfg_banner_text", disabled=not chk_cfg_banner)
 
-        # 5. CONNECTIVITY
+        # 6. CONNECTIVITY
         elif selected_cat == "Connectivity":
             chk_conn_ping = bind_checkbox("Verify IP Reachability (`VerifyReachability`)", key="chk_conn_ping")
             c_p1, c_p2 = st.columns(2)
@@ -528,7 +542,7 @@ with tab_catalog:
             with c_l2: st.text_input("Neighbor Device Name", value=st.session_state.get("param_conn_lldp_device", "Switch-2"), key="param_conn_lldp_device", disabled=not chk_conn_lldp)
             with c_l3: st.text_input("Neighbor Port", value=st.session_state.get("param_conn_lldp_neighbor_port", "Ethernet1"), key="param_conn_lldp_neighbor_port", disabled=not chk_conn_lldp)
 
-        # 6. INTERFACES
+        # 7. INTERFACES
         elif selected_cat == "Interfaces":
             st.text_input("Interfaces to check status (Comma-separated)", value=st.session_state.get("param_target_intfs_input", "Ethernet1, Management1"), key="param_target_intfs_input")
             st.divider()
@@ -580,7 +594,7 @@ with tab_catalog:
                 bind_checkbox("Verify SVI", key="chk_int_svi")
                 bind_checkbox("Verify Storm Control Drops", key="chk_int_storm")
 
-        # 7. ROUTING GENERIC
+        # 8. ROUTING GENERIC
         elif selected_cat == "Routing Generic":
             chk_rt_model = bind_checkbox("Verify Routing Protocol Model (`VerifyRoutingProtocolModel`)", key="chk_rt_model")
             st.selectbox("Protocol Model", ["multi-agent", "ribd"], key="param_rt_model_val", disabled=not chk_rt_model)
@@ -600,19 +614,28 @@ with tab_catalog:
             with c_rp1: st.text_input("Route Prefix", value=st.session_state.get("param_rt_prefix", "10.0.0.0/24"), key="param_rt_prefix", disabled=not chk_rt_presence)
             with c_rp2: st.text_input("VRF (Route Presence)", value=st.session_state.get("param_rt_vrf", "default"), key="param_rt_vrf", disabled=not chk_rt_presence)
 
-        # 8. ROUTING BGP
+        # 9. ROUTING BGP
         elif selected_cat == "Routing BGP":
             chk_bgp_health = bind_checkbox("Verify BGP Peers Health (`VerifyBGPPeersHealth`)", key="chk_bgp_health")
             st.text_input("BGP VRF", value=st.session_state.get("param_bgp_vrf", "default"), key="param_bgp_vrf", disabled=not chk_bgp_health)
 
-        # 9. STP
+        # 10. STP (UPDATED WITH ROOT & MODE)
         elif selected_cat == "STP":
             bind_checkbox("Verify STP Blocked Ports (`VerifySTPBlockedPorts`)", key="chk_stp_blocked")
+            
             st.divider()
             chk_stp_tc = bind_checkbox("Verify STP Topology Changes (`VerifyStpTopologyChanges`)", key="chk_stp_tc")
             st.number_input("Max Allowed Topology Changes Threshold", min_value=0, value=st.session_state.get("param_stp_tc_threshold", 1), step=1, key="param_stp_tc_threshold", disabled=not chk_stp_tc)
 
-        # 10. EVPN & VXLAN
+            st.divider()
+            chk_stp_root = bind_checkbox("Verify STP Root Bridge (`VerifySTPRoot`)", key="chk_stp_root")
+            st.text_input("Expected STP Root Bridge Bridge ID / Priority", value=st.session_state.get("param_stp_root_id", ""), key="param_stp_root_id", disabled=not chk_stp_root)
+
+            st.divider()
+            chk_stp_mode = bind_checkbox("Verify STP Operating Mode (`VerifySTPMode`)", key="chk_stp_mode")
+            st.selectbox("Expected STP Mode", ["mstp", "rapid-pvst", "pvst"], key="param_stp_mode_val", disabled=not chk_stp_mode)
+
+        # 11. EVPN & VXLAN (UPDATED WITH VTEP PEERS)
         elif selected_cat == "EVPN & VXLAN":
             chk_evpn_type5 = bind_checkbox("Verify EVPN Type 5 Routes (`VerifyEVPNType5Routes`)", key="chk_evpn_type5")
             c_ev1, c_ev2 = st.columns(2)
@@ -621,10 +644,15 @@ with tab_catalog:
             
             st.divider()
             bind_checkbox("Verify VXLAN1 Interface (`VerifyVxlan1Interface`)", key="chk_vxlan_intf")
+            
             st.divider()
             bind_checkbox("Verify VXLAN Config Sanity (`VerifyVxlanConfigSanity`)", key="chk_vxlan_sanity")
 
-        # 11. MLAG
+            st.divider()
+            chk_vtep_peers = bind_checkbox("Verify VTEP Peers (`VerifyVtepPeers`)", key="chk_vtep_peers")
+            st.text_input("Expected VTEP Peer IPs (comma-separated)", value=st.session_state.get("param_vtep_peers_ips", "10.0.0.2, 10.0.0.3"), key="param_vtep_peers_ips", disabled=not chk_vtep_peers)
+
+        # 12. MLAG
         elif selected_cat == "MLAG":
             bind_checkbox("Verify MLAG Status (`VerifyMlagStatus`)", key="chk_mlag_status")
             st.divider()
@@ -637,7 +665,7 @@ with tab_catalog:
             with c_md1: st.number_input("Reload Delay (sec)", value=st.session_state.get("param_mlag_reload_delay", 300), key="param_mlag_reload_delay", disabled=not chk_mlag_reload_delay)
             with c_md2: st.number_input("Non-MLAG Delay (sec)", value=st.session_state.get("param_mlag_non_mlag_delay", 330), key="param_mlag_non_mlag_delay", disabled=not chk_mlag_reload_delay)
 
-        # 12. MULTICAST
+        # 13. MULTICAST
         elif selected_cat == "Multicast":
             chk_igmp_snooping_global = bind_checkbox("Verify IGMP Snooping Global Status (`VerifyIGMPSnoopingGlobal`)", key="chk_igmp_snooping_global")
             st.checkbox("Global IGMP Snooping Should Be Enabled", value=st.session_state.get("param_igmp_global_enabled", True), key="param_igmp_global_enabled", disabled=not chk_igmp_snooping_global)
@@ -646,7 +674,7 @@ with tab_catalog:
             chk_igmp_snooping_vlans = bind_checkbox("Verify IGMP Snooping per VLANs (`VerifyIGMPSnoopingVlans`)", key="chk_igmp_snooping_vlans")
             st.text_input("VLANs and Expected Status (e.g. 10:True, 12:False)", value=st.session_state.get("param_igmp_vlans_mapping", "10:True, 12:False"), key="param_igmp_vlans_mapping", disabled=not chk_igmp_snooping_vlans)
 
-        # 13. SECURITY
+        # 14. SECURITY
         elif selected_cat == "Security":
             bind_checkbox("Verify eAPI HTTP Status (`VerifyAPIHttpStatus`)", key="chk_sec_api_http")
             
@@ -690,7 +718,12 @@ with tab_catalog:
             st.divider()
             bind_checkbox("Verify Telnet Status (`VerifyTelnetStatus` - Ensure Disabled)", key="chk_sec_telnet")
 
-        # 14. SERVICES
+        # 15. STUN
+        elif selected_cat == "STUN":
+            chk_stun_status = bind_checkbox("Verify STUN Server Status (`VerifyStunServer`)", key="chk_stun_status")
+            st.text_input("Expected STUN Server URL/IP", value=st.session_state.get("param_stun_server", "stun.l.google.com"), key="param_stun_server", disabled=not chk_stun_status)
+
+        # 16. SERVICES
         elif selected_cat == "Services":
             chk_hostname = bind_checkbox("Verify Hostname (`VerifyHostname`)", key="chk_hostname")
             st.text_input("Expected Hostname", value=st.session_state.get("param_service_hostname", "Switch-1"), key="param_service_hostname", disabled=not chk_hostname)
@@ -708,16 +741,16 @@ with tab_catalog:
             st.divider()
             bind_checkbox("Verify Errdisable Recovery (`VerifyErrdisableRecovery`)", key="chk_svc_errdisable_rec")
 
-        # 15. FLOW TRACKING
+        # 17. FLOW TRACKING
         elif selected_cat == "Flow Tracking":
             chk_flow_tracking = bind_checkbox("Verify Hardware Flow Tracker Status (`VerifyHardwareFlowTrackerStatus`)", key="chk_flow_tracking")
             st.text_input("Tracker Name", value=st.session_state.get("param_flow_tracker_name", "FLOW-TRACKER"), key="param_flow_tracker_name", disabled=not chk_flow_tracking)
 
-        # 16. LANZ
+        # 18. LANZ
         elif selected_cat == "LANZ":
             bind_checkbox("Verify LANZ Status (`VerifyLANZ`)", key="chk_lanz")
 
-        # 17. LOGGING
+        # 19. LOGGING
         elif selected_cat == "Logging":
             bind_checkbox("Verify Persistent Logging (`VerifyLoggingPersistent`)", key="chk_log_persistent")
             st.divider()
@@ -733,24 +766,32 @@ with tab_catalog:
             with c_lh1: st.text_input("Host IPs (comma-sep)", value=st.session_state.get("param_log_hosts_ips", "10.0.0.1"), key="param_log_hosts_ips", disabled=not chk_log_hosts)
             with c_lh2: st.text_input("Hosts VRF", value=st.session_state.get("param_log_hosts_vrf", "default"), key="param_log_hosts_vrf", disabled=not chk_log_hosts)
 
-        # 18. PATH SELECTION
+        # 20. PATH SELECTION
         elif selected_cat == "Path Selection":
             bind_checkbox("Verify Path Selection Health (`VerifyPathsHealth`)", key="chk_path_sel_health")
 
-        # 19. SNMP
+        # 21. SNMP (UPDATED WITH COMMUNITY)
         elif selected_cat == "SNMP":
             chk_snmp_status = bind_checkbox("Verify SNMP Status (`VerifySnmpStatus`)", key="chk_snmp_status")
             st.text_input("SNMP VRF", value=st.session_state.get("param_snmp_vrf", "default"), key="param_snmp_vrf", disabled=not chk_snmp_status)
 
-        # 20. VLAN
+            st.divider()
+            chk_snmp_community = bind_checkbox("Verify SNMP Communities (`VerifySnmpCommunity`)", key="chk_snmp_community")
+            st.text_input("Expected SNMP Community Names (comma-separated)", value=st.session_state.get("param_snmp_communities", "public, private"), key="param_snmp_communities", disabled=not chk_snmp_community)
+
+        # 22. VLAN (UPDATED WITH VLANS STATUS)
         elif selected_cat == "VLAN":
-            chk_vlan_internal = bind_checkbox("Verify VLAN Internal Policy (`VerifyVlanInternalPolicy`)", key="chk_vlan_internal")
+            chk_vlan_internal = bind_checkbox("Verify VLAN Internal Allocation Policy (`VerifyVlanInternalPolicy`)", key="chk_vlan_internal")
             st.selectbox("Allocation Policy", ["ascending", "descending"], key="param_vlan_alloc_policy", disabled=not chk_vlan_internal)
             col_v1, col_v2 = st.columns(2)
             with col_v1: st.number_input("Start VLAN ID", min_value=1, max_value=4094, value=st.session_state.get("param_vlan_start_id", 1006), key="param_vlan_start_id", disabled=not chk_vlan_internal)
             with col_v2: st.number_input("End VLAN ID", min_value=1, max_value=4094, value=st.session_state.get("param_vlan_end_id", 4094), key="param_vlan_end_id", disabled=not chk_vlan_internal)
 
-        # 21. CUSTOM YAML
+            st.divider()
+            chk_vlans_status = bind_checkbox("Verify Specific VLANs Status & Names (`VerifyVlans`)", key="chk_vlans_status")
+            st.text_input("VLAN IDs to check (comma-separated)", value=st.session_state.get("param_vlans_list", "10, 20, 30"), key="param_vlans_list", disabled=not chk_vlans_status)
+
+        # 23. CUSTOM YAML
         elif selected_cat == "Custom YAML":
             st.markdown("Paste custom YAML config for advanced ANTA tests.")
             default_custom = "# anta.tests.system:\n#   - VerifyUptime:\n#       minimum: 10\n"
@@ -797,6 +838,13 @@ with tab_catalog:
     if st.session_state.get("chk_sys_reload", False): add_test("anta.tests.system", {"VerifyReloadCause": None})
     if st.session_state.get("chk_sys_cpu", False): add_test("anta.tests.system", {"VerifyCPUUtilization": {"minimum": int(st.session_state.get("param_sys_cpu_val", 75))}})
     if st.session_state.get("chk_sys_mem", False): add_test("anta.tests.system", {"VerifyMemoryUtilization": {"minimum": int(st.session_state.get("param_sys_mem_val", 80))}})
+
+    # Software
+    if st.session_state.get("chk_sw_version", False):
+        add_test("anta.tests.software", {"VerifyEOSVersion": {"version": st.session_state.get("param_sw_version_val", "4.30.2F")}})
+    if st.session_state.get("chk_sw_bootloader", False):
+        b_val = st.session_state.get("param_sw_bootloader_val", "").strip()
+        if b_val: add_test("anta.tests.software", {"VerifyBootloaderVersion": {"version": b_val}})
 
     # AAA
     if st.session_state.get("chk_aaa_authen", False): add_test("anta.tests.aaa", {"VerifyAuthenMethods": {"methods": [st.session_state.get("param_aaa_method", "local")], "types": [st.session_state.get("param_aaa_type", "login")]}})
@@ -893,11 +941,19 @@ with tab_catalog:
     # STP
     if st.session_state.get("chk_stp_blocked", False): add_test("anta.tests.stp", {"VerifySTPBlockedPorts": None})
     if st.session_state.get("chk_stp_tc", False): add_test("anta.tests.stp", {"VerifyStpTopologyChanges": {"threshold": int(st.session_state.get("param_stp_tc_threshold", 1))}})
+    if st.session_state.get("chk_stp_root", False):
+        root_val = st.session_state.get("param_stp_root_id", "").strip()
+        if root_val: add_test("anta.tests.stp", {"VerifySTPRoot": {"priority": root_val}})
+    if st.session_state.get("chk_stp_mode", False):
+        add_test("anta.tests.stp", {"VerifySTPMode": {"mode": st.session_state.get("param_stp_mode_val", "mstp")}})
         
     # EVPN / VXLAN
     if st.session_state.get("chk_evpn_type5", False): add_test("anta.tests.evpn", {"VerifyEVPNType5Routes": {"prefixes": [{"address": st.session_state.get("param_evpn_prefix", "10.10.10.0/24"), "vni": int(st.session_state.get("param_evpn_vni", 10010))}]}})
     if st.session_state.get("chk_vxlan_intf", False): add_test("anta.tests.vxlan", {"VerifyVxlan1Interface": None})
     if st.session_state.get("chk_vxlan_sanity", False): add_test("anta.tests.vxlan", {"VerifyVxlanConfigSanity": None})
+    if st.session_state.get("chk_vtep_peers", False):
+        vtep_ips = [ip.strip() for ip in st.session_state.get("param_vtep_peers_ips", "10.0.0.2").split(",") if ip.strip()]
+        add_test("anta.tests.vxlan", {"VerifyVtepPeers": {"peers": vtep_ips}})
         
     # MLAG
     if st.session_state.get("chk_mlag_status", False): add_test("anta.tests.mlag", {"VerifyMlagStatus": None})
@@ -930,6 +986,10 @@ with tab_catalog:
     if st.session_state.get("chk_ssh_status", False): add_test("anta.tests.security", {"VerifySSHStatus": None})
     if st.session_state.get("chk_sec_telnet", False): add_test("anta.tests.security", {"VerifyTelnetStatus": None})
 
+    # STUN
+    if st.session_state.get("chk_stun_status", False):
+        add_test("anta.tests.stun", {"VerifyStunServer": {"server": st.session_state.get("param_stun_server", "stun.l.google.com")}})
+
     # Services
     if st.session_state.get("chk_hostname", False): add_test("anta.tests.services", {"VerifyHostname": {"hostname": st.session_state.get("param_service_hostname", "Switch-1")}})
     if st.session_state.get("chk_svc_dns_lookup", False): 
@@ -957,6 +1017,9 @@ with tab_catalog:
 
     # SNMP
     if st.session_state.get("chk_snmp_status", False): add_test("anta.tests.snmp", {"VerifySnmpStatus": {"vrf": st.session_state.get("param_snmp_vrf", "default")}})
+    if st.session_state.get("chk_snmp_community", False):
+        comm_val = st.session_state.get("param_snmp_communities", "public")
+        add_test("anta.tests.snmp", {"VerifySnmpCommunity": {"communities": [c.strip() for c in comm_val.split(",") if c.strip()]}})
 
     # VLAN
     if st.session_state.get("chk_vlan_internal", False): 
@@ -967,6 +1030,9 @@ with tab_catalog:
                 "end_vlan_id": int(st.session_state.get("param_vlan_end_id", 4094))
             }
         })
+    if st.session_state.get("chk_vlans_status", False):
+        v_list = [int(v.strip()) for v in st.session_state.get("param_vlans_list", "10, 20").split(",") if v.strip().isdigit()]
+        if v_list: add_test("anta.tests.vlan", {"VerifyVlans": {"vlans": v_list}})
         
     try:
         c_yaml = st.session_state.get("param_custom_yaml", "")
