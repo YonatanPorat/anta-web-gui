@@ -29,7 +29,7 @@ def save_settings(data_dict):
 
 saved_settings = load_settings()
 
-st.title("🚀 Arista ANTA Web GUI (v3.2)")
+st.title("🚀 Arista ANTA Web GUI (v3.3)")
 st.markdown("Manage your devices, tests, and run validations with fully customizable user parameters.")
 st.divider()
 
@@ -332,6 +332,8 @@ with tab_catalog:
 
     # --- Quick Action Bar ---
     tb_col1, tb_col2 = st.columns([3, 4])
+    
+    # FIXED TOGGLE SELECT ALL LOGIC
     def toggle_select_all():
         current_all_selected = all(st.session_state.get(k, False) for k in ALL_TEST_KEYS)
         new_state = not current_all_selected
@@ -393,95 +395,99 @@ with tab_catalog:
     with main_content_col:
         st.markdown(f"### {selected_cat_label}")
         
+        # Helper to sync Checkbox value with Session State
+        def bind_checkbox(label, key):
+            return st.checkbox(label, value=st.session_state.get(key, False), key=key)
+
         # 1. HARDWARE
         if selected_cat == "Hardware":
-            st.checkbox("Verify Transceivers Manufacturers (`VerifyTransceiversManufacturers`)", key="chk_hw_trans")
-            st.text_input("Expected Manufacturers (comma-separated)", value=st.session_state.get("param_hw_trans_mfg", "Arista Networks, ARISTA"), key="param_hw_trans_mfg", disabled=not st.session_state.get("chk_hw_trans", False))
+            chk_hw_trans = bind_checkbox("Verify Transceivers Manufacturers (`VerifyTransceiversManufacturers`)", key="chk_hw_trans")
+            st.text_input("Expected Manufacturers (comma-separated)", value=st.session_state.get("param_hw_trans_mfg", "Arista Networks, ARISTA"), key="param_hw_trans_mfg", disabled=not chk_hw_trans)
             
             st.divider()
-            st.checkbox("Verify Transceivers Presence (`VerifyTransceiversPresence`)", key="chk_hw_trans_presence")
-            st.text_input("Interfaces to check presence (comma-separated)", value=st.session_state.get("param_hw_trans_pres_intfs", "Ethernet1, Ethernet2"), key="param_hw_trans_pres_intfs", disabled=not st.session_state.get("chk_hw_trans_presence", False))
+            chk_hw_trans_presence = bind_checkbox("Verify Transceivers Presence (`VerifyTransceiversPresence`)", key="chk_hw_trans_presence")
+            st.text_input("Interfaces to check presence (comma-separated)", value=st.session_state.get("param_hw_trans_pres_intfs", "Ethernet1, Ethernet2"), key="param_hw_trans_pres_intfs", disabled=not chk_hw_trans_presence)
 
             st.divider()
-            st.checkbox("Verify Transceivers Optics Status (`VerifyTransceiversOptics`)", key="chk_hw_trans_optics")
+            bind_checkbox("Verify Transceivers Optics Status (`VerifyTransceiversOptics`)", key="chk_hw_trans_optics")
 
             st.divider()
-            st.checkbox("Verify System Cooling (`VerifyEnvironmentSystemCooling`)", key="chk_hw_cool")
+            bind_checkbox("Verify System Cooling (`VerifyEnvironmentSystemCooling`)", key="chk_hw_cool")
             
             st.divider()
-            st.checkbox("Verify Power Supplies (`VerifyEnvironmentPower`)", key="chk_hw_power")
-            st.text_input("Accepted Power States (comma-separated)", value=st.session_state.get("param_hw_power_states", "ok"), key="param_hw_power_states", disabled=not st.session_state.get("chk_hw_power", False))
+            chk_hw_power = bind_checkbox("Verify Power Supplies (`VerifyEnvironmentPower`)", key="chk_hw_power")
+            st.text_input("Accepted Power States (comma-separated)", value=st.session_state.get("param_hw_power_states", "ok"), key="param_hw_power_states", disabled=not chk_hw_power)
             
             st.divider()
-            st.checkbox("Verify Temperature (`VerifyTemperature`)", key="chk_hw_temp")
+            bind_checkbox("Verify Temperature (`VerifyTemperature`)", key="chk_hw_temp")
 
             st.divider()
-            st.checkbox("Verify PSE Status - PoE (`VerifyPseStatus`)", key="chk_hw_pse")
+            bind_checkbox("Verify PSE Status - PoE (`VerifyPseStatus`)", key="chk_hw_pse")
 
         # 2. SYSTEM
         elif selected_cat == "System":
-            st.checkbox("Verify Minimum Uptime (`VerifyUptime`)", key="chk_sys_uptime")
-            st.number_input("Minimum Uptime (seconds)", value=st.session_state.get("param_sys_uptime_val", 60), min_value=1, key="param_sys_uptime_val", disabled=not st.session_state.get("chk_sys_uptime", False))
+            chk_sys_uptime = bind_checkbox("Verify Minimum Uptime (`VerifyUptime`)", key="chk_sys_uptime")
+            st.number_input("Minimum Uptime (seconds)", value=st.session_state.get("param_sys_uptime_val", 60), min_value=1, key="param_sys_uptime_val", disabled=not chk_sys_uptime)
             
             st.divider()
-            st.checkbox("Verify NTP Status (`VerifyNTP`)", key="chk_sys_ntp")
+            bind_checkbox("Verify NTP Status (`VerifyNTP`)", key="chk_sys_ntp")
             
             st.divider()
-            st.checkbox("Verify No Coredumps (`VerifyCoredump`)", key="chk_sys_coredump")
+            bind_checkbox("Verify No Coredumps (`VerifyCoredump`)", key="chk_sys_coredump")
             
             st.divider()
-            st.checkbox("Verify Reload Cause (`VerifyReloadCause`)", key="chk_sys_reload")
+            bind_checkbox("Verify Reload Cause (`VerifyReloadCause`)", key="chk_sys_reload")
 
             st.divider()
-            st.checkbox("Verify CPU Utilization (`VerifyCPUUtilization`)", key="chk_sys_cpu")
-            st.number_input("Max Allowed CPU Utilization (%)", value=st.session_state.get("param_sys_cpu_val", 75), min_value=1, max_value=100, key="param_sys_cpu_val", disabled=not st.session_state.get("chk_sys_cpu", False))
+            chk_sys_cpu = bind_checkbox("Verify CPU Utilization (`VerifyCPUUtilization`)", key="chk_sys_cpu")
+            st.number_input("Max Allowed CPU Utilization (%)", value=st.session_state.get("param_sys_cpu_val", 75), min_value=1, max_value=100, key="param_sys_cpu_val", disabled=not chk_sys_cpu)
 
             st.divider()
-            st.checkbox("Verify Memory Utilization (`VerifyMemoryUtilization`)", key="chk_sys_mem")
-            st.number_input("Max Allowed Memory Utilization (%)", value=st.session_state.get("param_sys_mem_val", 80), min_value=1, max_value=100, key="param_sys_mem_val", disabled=not st.session_state.get("chk_sys_mem", False))
+            chk_sys_mem = bind_checkbox("Verify Memory Utilization (`VerifyMemoryUtilization`)", key="chk_sys_mem")
+            st.number_input("Max Allowed Memory Utilization (%)", value=st.session_state.get("param_sys_mem_val", 80), min_value=1, max_value=100, key="param_sys_mem_val", disabled=not chk_sys_mem)
 
         # 3. AAA
         elif selected_cat == "AAA":
-            st.checkbox("Verify Authentication Methods (`VerifyAuthenMethods`)", key="chk_aaa_authen")
+            chk_aaa_authen = bind_checkbox("Verify Authentication Methods (`VerifyAuthenMethods`)", key="chk_aaa_authen")
             c_a1, c_a2 = st.columns(2)
-            with c_a1: st.text_input("Expected Auth Method", value=st.session_state.get("param_aaa_method", "local"), key="param_aaa_method", disabled=not st.session_state.get("chk_aaa_authen", False))
-            with c_a2: st.selectbox("Auth Type", ["login", "enable"], key="param_aaa_type", disabled=not st.session_state.get("chk_aaa_authen", False))
+            with c_a1: st.text_input("Expected Auth Method", value=st.session_state.get("param_aaa_method", "local"), key="param_aaa_method", disabled=not chk_aaa_authen)
+            with c_a2: st.selectbox("Auth Type", ["login", "enable"], key="param_aaa_type", disabled=not chk_aaa_authen)
 
             st.divider()
-            st.checkbox("Verify Authorization Methods (`VerifyAuthzMethods`)", key="chk_aaa_authz")
-            st.text_input("Expected Authz Method (comma-separated)", value=st.session_state.get("param_aaa_authz_method", "group tacacs+"), key="param_aaa_authz_method", disabled=not st.session_state.get("chk_aaa_authz", False))
+            chk_aaa_authz = bind_checkbox("Verify Authorization Methods (`VerifyAuthzMethods`)", key="chk_aaa_authz")
+            st.text_input("Expected Authz Method (comma-separated)", value=st.session_state.get("param_aaa_authz_method", "group tacacs+"), key="param_aaa_authz_method", disabled=not chk_aaa_authz)
 
             st.divider()
-            st.checkbox("Verify Accounting Default Methods (`VerifyAcctDefaultMethods`)", key="chk_aaa_acct_default")
-            st.text_input("Acct Default Methods (comma-separated)", value=st.session_state.get("param_aaa_acct_def_methods", "group tacacs+, local"), key="param_aaa_acct_def_methods", disabled=not st.session_state.get("chk_aaa_acct_default", False))
+            chk_aaa_acct_default = bind_checkbox("Verify Accounting Default Methods (`VerifyAcctDefaultMethods`)", key="chk_aaa_acct_default")
+            st.text_input("Acct Default Methods (comma-separated)", value=st.session_state.get("param_aaa_acct_def_methods", "group tacacs+, local"), key="param_aaa_acct_def_methods", disabled=not chk_aaa_acct_default)
 
             st.divider()
-            st.checkbox("Verify Accounting Console Methods (`VerifyAcctConsoleMethods`)", key="chk_aaa_acct_console")
-            st.text_input("Acct Console Methods (comma-separated)", value=st.session_state.get("param_aaa_acct_con_methods", "local"), key="param_aaa_acct_con_methods", disabled=not st.session_state.get("chk_aaa_acct_console", False))
+            chk_aaa_acct_console = bind_checkbox("Verify Accounting Console Methods (`VerifyAcctConsoleMethods`)", key="chk_aaa_acct_console")
+            st.text_input("Acct Console Methods (comma-separated)", value=st.session_state.get("param_aaa_acct_con_methods", "local"), key="param_aaa_acct_con_methods", disabled=not chk_aaa_acct_console)
 
             st.divider()
-            st.checkbox("Verify TACACS Source Interface (`VerifyTacacsSourceIntf`)", key="chk_aaa_tacacs_src")
+            chk_aaa_tacacs_src = bind_checkbox("Verify TACACS Source Interface (`VerifyTacacsSourceIntf`)", key="chk_aaa_tacacs_src")
             c_t1, c_t2 = st.columns(2)
-            with c_t1: st.text_input("TACACS Source Interface", value=st.session_state.get("param_aaa_tacacs_src_intf", "Management1"), key="param_aaa_tacacs_src_intf", disabled=not st.session_state.get("chk_aaa_tacacs_src", False))
-            with c_t2: st.text_input("TACACS VRF", value=st.session_state.get("param_aaa_tacacs_src_vrf", "default"), key="param_aaa_tacacs_src_vrf", disabled=not st.session_state.get("chk_aaa_tacacs_src", False))
+            with c_t1: st.text_input("TACACS Source Interface", value=st.session_state.get("param_aaa_tacacs_src_intf", "Management1"), key="param_aaa_tacacs_src_intf", disabled=not chk_aaa_tacacs_src)
+            with c_t2: st.text_input("TACACS VRF", value=st.session_state.get("param_aaa_tacacs_src_vrf", "default"), key="param_aaa_tacacs_src_vrf", disabled=not chk_aaa_tacacs_src)
 
             st.divider()
-            st.checkbox("Verify TACACS Servers (`VerifyTacacsServers`)", key="chk_aaa_tacacs_servers")
-            st.text_input("TACACS Server IPs (comma-separated)", value=st.session_state.get("param_aaa_tacacs_srv_ips", "10.1.1.1, 10.1.1.2"), key="param_aaa_tacacs_srv_ips", disabled=not st.session_state.get("chk_aaa_tacacs_servers", False))
+            chk_aaa_tacacs_servers = bind_checkbox("Verify TACACS Servers (`VerifyTacacsServers`)", key="chk_aaa_tacacs_servers")
+            st.text_input("TACACS Server IPs (comma-separated)", value=st.session_state.get("param_aaa_tacacs_srv_ips", "10.1.1.1, 10.1.1.2"), key="param_aaa_tacacs_srv_ips", disabled=not chk_aaa_tacacs_servers)
 
             st.divider()
-            st.checkbox("Verify TACACS Server Groups (`VerifyTacacsServerGroups`)", key="chk_aaa_tacacs_groups")
-            st.text_input("TACACS Group Names (comma-separated)", value=st.session_state.get("param_aaa_tacacs_grp_names", "TACACS-SERVERS"), key="param_aaa_tacacs_grp_names", disabled=not st.session_state.get("chk_aaa_tacacs_groups", False))
+            chk_aaa_tacacs_groups = bind_checkbox("Verify TACACS Server Groups (`VerifyTacacsServerGroups`)", key="chk_aaa_tacacs_groups")
+            st.text_input("TACACS Group Names (comma-separated)", value=st.session_state.get("param_aaa_tacacs_grp_names", "TACACS-SERVERS"), key="param_aaa_tacacs_grp_names", disabled=not chk_aaa_tacacs_groups)
 
             st.divider()
-            st.checkbox("Verify RADIUS Source Interface (`VerifyRadiusSourceIntf`)", key="chk_aaa_radius_src")
+            chk_aaa_radius_src = bind_checkbox("Verify RADIUS Source Interface (`VerifyRadiusSourceIntf`)", key="chk_aaa_radius_src")
             c_r1, c_r2 = st.columns(2)
-            with c_r1: st.text_input("RADIUS Source Interface", value=st.session_state.get("param_aaa_radius_src_intf", "Management1"), key="param_aaa_radius_src_intf", disabled=not st.session_state.get("chk_aaa_radius_src", False))
-            with c_r2: st.text_input("RADIUS VRF", value=st.session_state.get("param_aaa_radius_src_vrf", "default"), key="param_aaa_radius_src_vrf", disabled=not st.session_state.get("chk_aaa_radius_src", False))
+            with c_r1: st.text_input("RADIUS Source Interface", value=st.session_state.get("param_aaa_radius_src_intf", "Management1"), key="param_aaa_radius_src_intf", disabled=not chk_aaa_radius_src)
+            with c_r2: st.text_input("RADIUS VRF", value=st.session_state.get("param_aaa_radius_src_vrf", "default"), key="param_aaa_radius_src_vrf", disabled=not chk_aaa_radius_src)
 
             st.divider()
-            st.checkbox("Verify RADIUS Servers (`VerifyRadiusServers`)", key="chk_aaa_radius_servers")
-            st.text_input("RADIUS Server IPs (comma-separated)", value=st.session_state.get("param_aaa_radius_srv_ips", "10.2.2.1"), key="param_aaa_radius_srv_ips", disabled=not st.session_state.get("chk_aaa_radius_servers", False))
+            chk_aaa_radius_servers = bind_checkbox("Verify RADIUS Servers (`VerifyRadiusServers`)", key="chk_aaa_radius_servers")
+            st.text_input("RADIUS Server IPs (comma-separated)", value=st.session_state.get("param_aaa_radius_srv_ips", "10.2.2.1"), key="param_aaa_radius_srv_ips", disabled=not chk_aaa_radius_servers)
 
         # 4. CONFIGURATION
         elif selected_cat == "Configuration":
@@ -504,253 +510,253 @@ with tab_catalog:
             st.session_state.cfg_rules_data = edited_cfg_rules.to_dict("records")
 
             st.divider()
-            st.checkbox("Verify Zero Touch Provisioning (`VerifyZeroTouch`)", key="chk_cfg_ztp")
-            st.checkbox("ZTP Should Be Disabled", value=st.session_state.get("param_cfg_ztp_disabled", True), key="param_cfg_ztp_disabled", disabled=not st.session_state.get("chk_cfg_ztp", False))
+            chk_cfg_ztp = bind_checkbox("Verify Zero Touch Provisioning (`VerifyZeroTouch`)", key="chk_cfg_ztp")
+            st.checkbox("ZTP Should Be Disabled", value=st.session_state.get("param_cfg_ztp_disabled", True), key="param_cfg_ztp_disabled", disabled=not chk_cfg_ztp)
 
             st.divider()
-            st.checkbox("Verify Running-Config vs Startup-Config Diff (`VerifyRunningConfigDiff`)", key="chk_cfg_diff")
+            bind_checkbox("Verify Running-Config vs Startup-Config Diff (`VerifyRunningConfigDiff`)", key="chk_cfg_diff")
 
             st.divider()
-            st.checkbox("Verify System Banner (`VerifyBanner`)", key="chk_cfg_banner")
+            chk_cfg_banner = bind_checkbox("Verify System Banner (`VerifyBanner`)", key="chk_cfg_banner")
             c_bn1, c_bn2 = st.columns(2)
-            with c_bn1: st.selectbox("Banner Type", ["login", "motd"], key="param_cfg_banner_type", disabled=not st.session_state.get("chk_cfg_banner", False))
-            with c_bn2: st.text_input("Expected Banner Text", value=st.session_state.get("param_cfg_banner_text", "Authorized Access Only"), key="param_cfg_banner_text", disabled=not st.session_state.get("chk_cfg_banner", False))
+            with c_bn1: st.selectbox("Banner Type", ["login", "motd"], key="param_cfg_banner_type", disabled=not chk_cfg_banner)
+            with c_bn2: st.text_input("Expected Banner Text", value=st.session_state.get("param_cfg_banner_text", "Authorized Access Only"), key="param_cfg_banner_text", disabled=not chk_cfg_banner)
 
         # 5. CONNECTIVITY
         elif selected_cat == "Connectivity":
-            st.checkbox("Verify IP Reachability (`VerifyReachability`)", key="chk_conn_ping")
+            chk_conn_ping = bind_checkbox("Verify IP Reachability (`VerifyReachability`)", key="chk_conn_ping")
             c_p1, c_p2 = st.columns(2)
-            with c_p1: st.text_input("Destination IP", value=st.session_state.get("param_conn_dest", "8.8.8.8"), key="param_conn_dest", disabled=not st.session_state.get("chk_conn_ping", False))
-            with c_p2: st.text_input("VRF (Ping)", value=st.session_state.get("param_conn_vrf", "default"), key="param_conn_vrf", disabled=not st.session_state.get("chk_conn_ping", False))
+            with c_p1: st.text_input("Destination IP", value=st.session_state.get("param_conn_dest", "8.8.8.8"), key="param_conn_dest", disabled=not chk_conn_ping)
+            with c_p2: st.text_input("VRF (Ping)", value=st.session_state.get("param_conn_vrf", "default"), key="param_conn_vrf", disabled=not chk_conn_ping)
             
             st.divider()
-            st.checkbox("Verify LLDP Neighbor (`VerifyLLDPNeighbors`)", key="chk_conn_lldp")
+            chk_conn_lldp = bind_checkbox("Verify LLDP Neighbor (`VerifyLLDPNeighbors`)", key="chk_conn_lldp")
             c_l1, c_l2, c_l3 = st.columns(3)
-            with c_l1: st.text_input("Local Port", value=st.session_state.get("param_conn_lldp_port", "Ethernet1"), key="param_conn_lldp_port", disabled=not st.session_state.get("chk_conn_lldp", False))
-            with c_l2: st.text_input("Neighbor Device Name", value=st.session_state.get("param_conn_lldp_device", "Switch-2"), key="param_conn_lldp_device", disabled=not st.session_state.get("chk_conn_lldp", False))
-            with c_l3: st.text_input("Neighbor Port", value=st.session_state.get("param_conn_lldp_neighbor_port", "Ethernet1"), key="param_conn_lldp_neighbor_port", disabled=not st.session_state.get("chk_conn_lldp", False))
+            with c_l1: st.text_input("Local Port", value=st.session_state.get("param_conn_lldp_port", "Ethernet1"), key="param_conn_lldp_port", disabled=not chk_conn_lldp)
+            with c_l2: st.text_input("Neighbor Device Name", value=st.session_state.get("param_conn_lldp_device", "Switch-2"), key="param_conn_lldp_device", disabled=not chk_conn_lldp)
+            with c_l3: st.text_input("Neighbor Port", value=st.session_state.get("param_conn_lldp_neighbor_port", "Ethernet1"), key="param_conn_lldp_neighbor_port", disabled=not chk_conn_lldp)
 
         # 6. INTERFACES
         elif selected_cat == "Interfaces":
             st.text_input("Interfaces to check status (Comma-separated)", value=st.session_state.get("param_target_intfs_input", "Ethernet1, Management1"), key="param_target_intfs_input")
             st.divider()
-            st.checkbox("Verify Interfaces Status (`VerifyInterfacesStatus`)", key="chk_int_status")
-            st.checkbox("Verify Interface Errors (`VerifyInterfaceErrors`)", key="chk_int_err")
-            st.checkbox("Verify Interface Discards (`VerifyInterfaceDiscards`)", key="chk_int_disc")
+            bind_checkbox("Verify Interfaces Status (`VerifyInterfacesStatus`)", key="chk_int_status")
+            bind_checkbox("Verify Interface Errors (`VerifyInterfaceErrors`)", key="chk_int_err")
+            bind_checkbox("Verify Interface Discards (`VerifyInterfaceDiscards`)", key="chk_int_disc")
             st.divider()
             i_col1, i_col2 = st.columns(2)
             with i_col1:
-                st.checkbox("Verify Interfaces Speed", key="chk_int_speed")
+                chk_int_speed = bind_checkbox("Verify Interfaces Speed", key="chk_int_speed")
                 col_sp1, col_sp2 = st.columns(2)
-                with col_sp1: st.text_input("Speed Intf", value=st.session_state.get("param_int_speed_intf", "Ethernet1"), key="param_int_speed_intf", disabled=not st.session_state.get("chk_int_speed", False))
-                with col_sp2: st.number_input("Speed (Mbps)", value=st.session_state.get("param_int_speed_val", 1000), key="param_int_speed_val", disabled=not st.session_state.get("chk_int_speed", False))
+                with col_sp1: st.text_input("Speed Intf", value=st.session_state.get("param_int_speed_intf", "Ethernet1"), key="param_int_speed_intf", disabled=not chk_int_speed)
+                with col_sp2: st.number_input("Speed (Mbps)", value=st.session_state.get("param_int_speed_val", 1000), key="param_int_speed_val", disabled=not chk_int_speed)
 
-                st.checkbox("Verify L2 MTU", key="chk_int_l2mtu")
-                st.number_input("L2 MTU Value", value=st.session_state.get("param_int_l2mtu_val", 9214), key="param_int_l2mtu_val", disabled=not st.session_state.get("chk_int_l2mtu", False))
+                chk_int_l2mtu = bind_checkbox("Verify L2 MTU", key="chk_int_l2mtu")
+                st.number_input("L2 MTU Value", value=st.session_state.get("param_int_l2mtu_val", 9214), key="param_int_l2mtu_val", disabled=not chk_int_l2mtu)
                 
-                st.checkbox("Verify Loopback Count", key="chk_int_loopback")
-                st.number_input("Loopback Count", value=st.session_state.get("param_int_loopback_val", 1), key="param_int_loopback_val", disabled=not st.session_state.get("chk_int_loopback", False))
+                chk_int_loopback = bind_checkbox("Verify Loopback Count", key="chk_int_loopback")
+                st.number_input("Loopback Count", value=st.session_state.get("param_int_loopback_val", 1), key="param_int_loopback_val", disabled=not chk_int_loopback)
                 
-                st.checkbox("Verify IP Proxy ARP", key="chk_int_proxy_arp")
-                st.text_input("Proxy ARP Intfs (comma-sep)", value=st.session_state.get("param_int_proxy_arp_intf", "Vlan1"), key="param_int_proxy_arp_intf", disabled=not st.session_state.get("chk_int_proxy_arp", False))
+                chk_int_proxy_arp = bind_checkbox("Verify IP Proxy ARP", key="chk_int_proxy_arp")
+                st.text_input("Proxy ARP Intfs (comma-sep)", value=st.session_state.get("param_int_proxy_arp_intf", "Vlan1"), key="param_int_proxy_arp_intf", disabled=not chk_int_proxy_arp)
                 
-                st.checkbox("Verify IP VRRP Mac", key="chk_int_vrrp_mac")
-                st.text_input("VRRP MAC Address", value=st.session_state.get("param_int_vrrp_mac_val", "00:00:00:00:00:00"), key="param_int_vrrp_mac_val", disabled=not st.session_state.get("chk_int_vrrp_mac", False))
+                chk_int_vrrp_mac = bind_checkbox("Verify IP VRRP Mac", key="chk_int_vrrp_mac")
+                st.text_input("VRRP MAC Address", value=st.session_state.get("param_int_vrrp_mac_val", "00:00:00:00:00:00"), key="param_int_vrrp_mac_val", disabled=not chk_int_vrrp_mac)
                 
-                st.checkbox("Verify Interface IPv4", key="chk_int_ipv4")
+                chk_int_ipv4 = bind_checkbox("Verify Interface IPv4", key="chk_int_ipv4")
                 col_ip1, col_ip2 = st.columns(2)
-                with col_ip1: st.text_input("IPv4 Intf Name", value=st.session_state.get("param_int_ipv4_intf", "Ethernet1"), key="param_int_ipv4_intf", disabled=not st.session_state.get("chk_int_ipv4", False))
-                with col_ip2: st.text_input("Primary IP CIDR", value=st.session_state.get("param_int_ipv4_ip", "10.0.0.1/24"), key="param_int_ipv4_ip", disabled=not st.session_state.get("chk_int_ipv4", False))
+                with col_ip1: st.text_input("IPv4 Intf Name", value=st.session_state.get("param_int_ipv4_intf", "Ethernet1"), key="param_int_ipv4_intf", disabled=not chk_int_ipv4)
+                with col_ip2: st.text_input("Primary IP CIDR", value=st.session_state.get("param_int_ipv4_ip", "10.0.0.1/24"), key="param_int_ipv4_ip", disabled=not chk_int_ipv4)
 
-                st.checkbox("Verify Illegal LACP", key="chk_int_ill_lacp")
-                st.checkbox("Verify Interface ErrDisabled", key="chk_int_err_dis")
-                st.checkbox("Verify Interface Utilization", key="chk_int_util")
-                st.checkbox("Verify Interfaces BER", key="chk_int_ber")
+                bind_checkbox("Verify Illegal LACP", key="chk_int_ill_lacp")
+                bind_checkbox("Verify Interface ErrDisabled", key="chk_int_err_dis")
+                bind_checkbox("Verify Interface Utilization", key="chk_int_util")
+                bind_checkbox("Verify Interfaces BER", key="chk_int_ber")
             with i_col2:
-                st.checkbox("Verify L3 MTU", key="chk_int_l3mtu")
-                st.number_input("L3 MTU Value", value=st.session_state.get("param_int_l3mtu_val", 1500), key="param_int_l3mtu_val", disabled=not st.session_state.get("chk_int_l3mtu", False))
+                chk_int_l3mtu = bind_checkbox("Verify L3 MTU", key="chk_int_l3mtu")
+                st.number_input("L3 MTU Value", value=st.session_state.get("param_int_l3mtu_val", 1500), key="param_int_l3mtu_val", disabled=not chk_int_l3mtu)
                 
-                st.checkbox("Verify Counter Details", key="chk_int_counter_det")
-                st.checkbox("Verify ECN Counters", key="chk_int_ecn")
-                st.checkbox("Verify Optics RX Power", key="chk_int_optics_rx")
-                st.checkbox("Verify Optics Temp", key="chk_int_optics_temp")
-                st.checkbox("Verify PFC Counters", key="chk_int_pfc")
-                st.checkbox("Verify Trident Counters", key="chk_int_trident")
-                st.checkbox("Verify Voq / Egress Drops", key="chk_int_voq")
-                st.checkbox("Verify Egress Queue Drops", key="chk_int_egress_drop")
-                st.checkbox("Verify Port Channels", key="chk_int_port_channel")
-                st.checkbox("Verify SVI", key="chk_int_svi")
-                st.checkbox("Verify Storm Control Drops", key="chk_int_storm")
+                bind_checkbox("Verify Counter Details", key="chk_int_counter_det")
+                bind_checkbox("Verify ECN Counters", key="chk_int_ecn")
+                bind_checkbox("Verify Optics RX Power", key="chk_int_optics_rx")
+                bind_checkbox("Verify Optics Temp", key="chk_int_optics_temp")
+                bind_checkbox("Verify PFC Counters", key="chk_int_pfc")
+                bind_checkbox("Verify Trident Counters", key="chk_int_trident")
+                bind_checkbox("Verify Voq / Egress Drops", key="chk_int_voq")
+                bind_checkbox("Verify Egress Queue Drops", key="chk_int_egress_drop")
+                bind_checkbox("Verify Port Channels", key="chk_int_port_channel")
+                bind_checkbox("Verify SVI", key="chk_int_svi")
+                bind_checkbox("Verify Storm Control Drops", key="chk_int_storm")
 
         # 7. ROUTING GENERIC
         elif selected_cat == "Routing Generic":
-            st.checkbox("Verify Routing Protocol Model (`VerifyRoutingProtocolModel`)", key="chk_rt_model")
-            st.selectbox("Protocol Model", ["multi-agent", "ribd"], key="param_rt_model_val", disabled=not st.session_state.get("chk_rt_model", False))
+            chk_rt_model = bind_checkbox("Verify Routing Protocol Model (`VerifyRoutingProtocolModel`)", key="chk_rt_model")
+            st.selectbox("Protocol Model", ["multi-agent", "ribd"], key="param_rt_model_val", disabled=not chk_rt_model)
             
             st.divider()
-            st.checkbox("Verify IPv4 Unicast Routing Status (`VerifyRoutingStatus`)", key="chk_rt_status")
+            bind_checkbox("Verify IPv4 Unicast Routing Status (`VerifyRoutingStatus`)", key="chk_rt_status")
             
             st.divider()
-            st.checkbox("Verify Routing Table Size (`VerifyRoutingTableSize`)", key="chk_rt_size")
+            chk_rt_size = bind_checkbox("Verify Routing Table Size (`VerifyRoutingTableSize`)", key="chk_rt_size")
             col_min, col_max = st.columns(2)
-            with col_min: st.number_input("Min Routes", value=st.session_state.get("param_rt_size_min", 1), min_value=1, key="param_rt_size_min", disabled=not st.session_state.get("chk_rt_size", False))
-            with col_max: st.number_input("Max Routes", value=st.session_state.get("param_rt_size_max", 1000), min_value=1, key="param_rt_size_max", disabled=not st.session_state.get("chk_rt_size", False))
+            with col_min: st.number_input("Min Routes", value=st.session_state.get("param_rt_size_min", 1), min_value=1, key="param_rt_size_min", disabled=not chk_rt_size)
+            with col_max: st.number_input("Max Routes", value=st.session_state.get("param_rt_size_max", 1000), min_value=1, key="param_rt_size_max", disabled=not chk_rt_size)
             
             st.divider()
-            st.checkbox("Verify IPv4 Route Presence (`VerifyIPv4RoutePresencePerVRF`)", key="chk_rt_presence")
+            chk_rt_presence = bind_checkbox("Verify IPv4 Route Presence (`VerifyIPv4RoutePresencePerVRF`)", key="chk_rt_presence")
             c_rp1, c_rp2 = st.columns(2)
-            with c_rp1: st.text_input("Route Prefix", value=st.session_state.get("param_rt_prefix", "10.0.0.0/24"), key="param_rt_prefix", disabled=not st.session_state.get("chk_rt_presence", False))
-            with c_rp2: st.text_input("VRF (Route Presence)", value=st.session_state.get("param_rt_vrf", "default"), key="param_rt_vrf", disabled=not st.session_state.get("chk_rt_presence", False))
+            with c_rp1: st.text_input("Route Prefix", value=st.session_state.get("param_rt_prefix", "10.0.0.0/24"), key="param_rt_prefix", disabled=not chk_rt_presence)
+            with c_rp2: st.text_input("VRF (Route Presence)", value=st.session_state.get("param_rt_vrf", "default"), key="param_rt_vrf", disabled=not chk_rt_presence)
 
         # 8. ROUTING BGP
         elif selected_cat == "Routing BGP":
-            st.checkbox("Verify BGP Peers Health (`VerifyBGPPeersHealth`)", key="chk_bgp_health")
-            st.text_input("BGP VRF", value=st.session_state.get("param_bgp_vrf", "default"), key="param_bgp_vrf", disabled=not st.session_state.get("chk_bgp_health", False))
+            chk_bgp_health = bind_checkbox("Verify BGP Peers Health (`VerifyBGPPeersHealth`)", key="chk_bgp_health")
+            st.text_input("BGP VRF", value=st.session_state.get("param_bgp_vrf", "default"), key="param_bgp_vrf", disabled=not chk_bgp_health)
 
         # 9. STP
         elif selected_cat == "STP":
-            st.checkbox("Verify STP Blocked Ports (`VerifySTPBlockedPorts`)", key="chk_stp_blocked")
+            bind_checkbox("Verify STP Blocked Ports (`VerifySTPBlockedPorts`)", key="chk_stp_blocked")
             st.divider()
-            st.checkbox("Verify STP Topology Changes (`VerifyStpTopologyChanges`)", key="chk_stp_tc")
-            st.number_input("Max Allowed Topology Changes Threshold", min_value=0, value=st.session_state.get("param_stp_tc_threshold", 1), step=1, key="param_stp_tc_threshold", disabled=not st.session_state.get("chk_stp_tc", False))
+            chk_stp_tc = bind_checkbox("Verify STP Topology Changes (`VerifyStpTopologyChanges`)", key="chk_stp_tc")
+            st.number_input("Max Allowed Topology Changes Threshold", min_value=0, value=st.session_state.get("param_stp_tc_threshold", 1), step=1, key="param_stp_tc_threshold", disabled=not chk_stp_tc)
 
         # 10. EVPN & VXLAN
         elif selected_cat == "EVPN & VXLAN":
-            st.checkbox("Verify EVPN Type 5 Routes (`VerifyEVPNType5Routes`)", key="chk_evpn_type5")
+            chk_evpn_type5 = bind_checkbox("Verify EVPN Type 5 Routes (`VerifyEVPNType5Routes`)", key="chk_evpn_type5")
             c_ev1, c_ev2 = st.columns(2)
-            with c_ev1: st.text_input("Network Prefix", value=st.session_state.get("param_evpn_prefix", "10.10.10.0/24"), key="param_evpn_prefix", disabled=not st.session_state.get("chk_evpn_type5", False))
-            with c_ev2: st.number_input("VNI", value=st.session_state.get("param_evpn_vni", 10010), key="param_evpn_vni", disabled=not st.session_state.get("chk_evpn_type5", False))
+            with c_ev1: st.text_input("Network Prefix", value=st.session_state.get("param_evpn_prefix", "10.10.10.0/24"), key="param_evpn_prefix", disabled=not chk_evpn_type5)
+            with c_ev2: st.number_input("VNI", value=st.session_state.get("param_evpn_vni", 10010), key="param_evpn_vni", disabled=not chk_evpn_type5)
             
             st.divider()
-            st.checkbox("Verify VXLAN1 Interface (`VerifyVxlan1Interface`)", key="chk_vxlan_intf")
+            bind_checkbox("Verify VXLAN1 Interface (`VerifyVxlan1Interface`)", key="chk_vxlan_intf")
             st.divider()
-            st.checkbox("Verify VXLAN Config Sanity (`VerifyVxlanConfigSanity`)", key="chk_vxlan_sanity")
+            bind_checkbox("Verify VXLAN Config Sanity (`VerifyVxlanConfigSanity`)", key="chk_vxlan_sanity")
 
         # 11. MLAG
         elif selected_cat == "MLAG":
-            st.checkbox("Verify MLAG Status (`VerifyMlagStatus`)", key="chk_mlag_status")
+            bind_checkbox("Verify MLAG Status (`VerifyMlagStatus`)", key="chk_mlag_status")
             st.divider()
-            st.checkbox("Verify MLAG Interfaces (`VerifyMlagInterfaces`)", key="chk_mlag_interfaces")
+            bind_checkbox("Verify MLAG Interfaces (`VerifyMlagInterfaces`)", key="chk_mlag_interfaces")
             st.divider()
-            st.checkbox("Verify MLAG Config Sanity (`VerifyMlagConfigSanity`)", key="chk_mlag_config_sanity")
+            bind_checkbox("Verify MLAG Config Sanity (`VerifyMlagConfigSanity`)", key="chk_mlag_config_sanity")
             st.divider()
-            st.checkbox("Verify MLAG Reload Delay (`VerifyMlagReloadDelay`)", key="chk_mlag_reload_delay")
+            chk_mlag_reload_delay = bind_checkbox("Verify MLAG Reload Delay (`VerifyMlagReloadDelay`)", key="chk_mlag_reload_delay")
             c_md1, c_md2 = st.columns(2)
-            with c_md1: st.number_input("Reload Delay (sec)", value=st.session_state.get("param_mlag_reload_delay", 300), key="param_mlag_reload_delay", disabled=not st.session_state.get("chk_mlag_reload_delay", False))
-            with c_md2: st.number_input("Non-MLAG Delay (sec)", value=st.session_state.get("param_mlag_non_mlag_delay", 330), key="param_mlag_non_mlag_delay", disabled=not st.session_state.get("chk_mlag_reload_delay", False))
+            with c_md1: st.number_input("Reload Delay (sec)", value=st.session_state.get("param_mlag_reload_delay", 300), key="param_mlag_reload_delay", disabled=not chk_mlag_reload_delay)
+            with c_md2: st.number_input("Non-MLAG Delay (sec)", value=st.session_state.get("param_mlag_non_mlag_delay", 330), key="param_mlag_non_mlag_delay", disabled=not chk_mlag_reload_delay)
 
-        # 12. MULTICAST (EXPANDED SUITE)
+        # 12. MULTICAST
         elif selected_cat == "Multicast":
-            st.checkbox("Verify IGMP Snooping Global Status (`VerifyIGMPSnoopingGlobal`)", key="chk_igmp_snooping_global")
-            st.checkbox("Global IGMP Snooping Should Be Enabled", value=st.session_state.get("param_igmp_global_enabled", True), key="param_igmp_global_enabled", disabled=not st.session_state.get("chk_igmp_snooping_global", False))
+            chk_igmp_snooping_global = bind_checkbox("Verify IGMP Snooping Global Status (`VerifyIGMPSnoopingGlobal`)", key="chk_igmp_snooping_global")
+            st.checkbox("Global IGMP Snooping Should Be Enabled", value=st.session_state.get("param_igmp_global_enabled", True), key="param_igmp_global_enabled", disabled=not chk_igmp_snooping_global)
 
             st.divider()
-            st.checkbox("Verify IGMP Snooping per VLANs (`VerifyIGMPSnoopingVlans`)", key="chk_igmp_snooping_vlans")
-            st.text_input("VLANs and Expected Status (e.g. 10:True, 12:False)", value=st.session_state.get("param_igmp_vlans_mapping", "10:True, 12:False"), key="param_igmp_vlans_mapping", disabled=not st.session_state.get("chk_igmp_snooping_vlans", False))
+            chk_igmp_snooping_vlans = bind_checkbox("Verify IGMP Snooping per VLANs (`VerifyIGMPSnoopingVlans`)", key="chk_igmp_snooping_vlans")
+            st.text_input("VLANs and Expected Status (e.g. 10:True, 12:False)", value=st.session_state.get("param_igmp_vlans_mapping", "10:True, 12:False"), key="param_igmp_vlans_mapping", disabled=not chk_igmp_snooping_vlans)
 
-        # 13. SECURITY (EXPANDED SUITE)
+        # 13. SECURITY
         elif selected_cat == "Security":
-            st.checkbox("Verify eAPI HTTP Status (`VerifyAPIHttpStatus`)", key="chk_sec_api_http")
+            bind_checkbox("Verify eAPI HTTP Status (`VerifyAPIHttpStatus`)", key="chk_sec_api_http")
             
             st.divider()
-            st.checkbox("Verify eAPI HTTPS SSL Profile (`VerifyAPIHttpsSSL`)", key="chk_sec_api_https_ssl")
-            st.text_input("eAPI SSL Profile Name", value=st.session_state.get("param_sec_api_ssl_profile", "default"), key="param_sec_api_ssl_profile", disabled=not st.session_state.get("chk_sec_api_https_ssl", False))
+            chk_sec_api_https_ssl = bind_checkbox("Verify eAPI HTTPS SSL Profile (`VerifyAPIHttpsSSL`)", key="chk_sec_api_https_ssl")
+            st.text_input("eAPI SSL Profile Name", value=st.session_state.get("param_sec_api_ssl_profile", "default"), key="param_sec_api_ssl_profile", disabled=not chk_sec_api_https_ssl)
 
             st.divider()
             c_sec1, c_sec2 = st.columns(2)
             with c_sec1:
-                st.checkbox("Verify eAPI IPv4 ACL (`VerifyAPIIPv4Acl`)", key="chk_sec_api_v4_acl")
-                st.text_input("eAPI IPv4 ACL Name", value=st.session_state.get("param_sec_api_v4_acl_name", "ACL-EAPI-V4"), key="param_sec_api_v4_acl_name", disabled=not st.session_state.get("chk_sec_api_v4_acl", False))
-                st.text_input("eAPI IPv4 VRF", value=st.session_state.get("param_sec_api_v4_acl_vrf", "default"), key="param_sec_api_v4_acl_vrf", disabled=not st.session_state.get("chk_sec_api_v4_acl", False))
+                chk_sec_api_v4_acl = bind_checkbox("Verify eAPI IPv4 ACL (`VerifyAPIIPv4Acl`)", key="chk_sec_api_v4_acl")
+                st.text_input("eAPI IPv4 ACL Name", value=st.session_state.get("param_sec_api_v4_acl_name", "ACL-EAPI-V4"), key="param_sec_api_v4_acl_name", disabled=not chk_sec_api_v4_acl)
+                st.text_input("eAPI IPv4 VRF", value=st.session_state.get("param_sec_api_v4_acl_vrf", "default"), key="param_sec_api_v4_acl_vrf", disabled=not chk_sec_api_v4_acl)
             with c_sec2:
-                st.checkbox("Verify eAPI IPv6 ACL (`VerifyAPIIPv6Acl`)", key="chk_sec_api_v6_acl")
-                st.text_input("eAPI IPv6 ACL Name", value=st.session_state.get("param_sec_api_v6_acl_name", "ACL-EAPI-V6"), key="param_sec_api_v6_acl_name", disabled=not st.session_state.get("chk_sec_api_v6_acl", False))
-                st.text_input("eAPI IPv6 VRF", value=st.session_state.get("param_sec_api_v6_acl_vrf", "default"), key="param_sec_api_v6_acl_vrf", disabled=not st.session_state.get("chk_sec_api_v6_acl", False))
+                chk_sec_api_v6_acl = bind_checkbox("Verify eAPI IPv6 ACL (`VerifyAPIIPv6Acl`)", key="chk_sec_api_v6_acl")
+                st.text_input("eAPI IPv6 ACL Name", value=st.session_state.get("param_sec_api_v6_acl_name", "ACL-EAPI-V6"), key="param_sec_api_v6_acl_name", disabled=not chk_sec_api_v6_acl)
+                st.text_input("eAPI IPv6 VRF", value=st.session_state.get("param_sec_api_v6_acl_vrf", "default"), key="param_sec_api_v6_acl_vrf", disabled=not chk_sec_api_v6_acl)
 
             st.divider()
-            st.checkbox("Verify SSL Certificates (`VerifyAPISSLCertificate`)", key="chk_sec_ssl_cert")
-            st.number_input("Cert Expiry Threshold (Days)", value=st.session_state.get("param_sec_ssl_cert_days", 30), min_value=1, key="param_sec_ssl_cert_days", disabled=not st.session_state.get("chk_sec_ssl_cert", False))
+            chk_sec_ssl_cert = bind_checkbox("Verify SSL Certificates (`VerifyAPISSLCertificate`)", key="chk_sec_ssl_cert")
+            st.number_input("Cert Expiry Threshold (Days)", value=st.session_state.get("param_sec_ssl_cert_days", 30), min_value=1, key="param_sec_ssl_cert_days", disabled=not chk_sec_ssl_cert)
 
             st.divider()
-            st.checkbox("Verify Hardware Entropy (`VerifyHardwareEntropy`)", key="chk_sec_entropy")
+            bind_checkbox("Verify Hardware Entropy (`VerifyHardwareEntropy`)", key="chk_sec_entropy")
 
             st.divider()
-            st.checkbox("Verify IPSec Connections Health (`VerifyIPSecConnHealth`)", key="chk_sec_ipsec_health")
+            bind_checkbox("Verify IPSec Connections Health (`VerifyIPSecConnHealth`)", key="chk_sec_ipsec_health")
 
             st.divider()
             c_ssh1, c_ssh2 = st.columns(2)
             with c_ssh1:
-                st.checkbox("Verify SSH IPv4 ACL (`VerifySSHIPv4Acl`)", key="chk_sec_ssh_v4_acl")
-                st.text_input("SSH IPv4 ACL Name", value=st.session_state.get("param_sec_ssh_v4_acl_name", "ACL-SSH-V4"), key="param_sec_ssh_v4_acl_name", disabled=not st.session_state.get("chk_sec_ssh_v4_acl", False))
+                chk_sec_ssh_v4_acl = bind_checkbox("Verify SSH IPv4 ACL (`VerifySSHIPv4Acl`)", key="chk_sec_ssh_v4_acl")
+                st.text_input("SSH IPv4 ACL Name", value=st.session_state.get("param_sec_ssh_v4_acl_name", "ACL-SSH-V4"), key="param_sec_ssh_v4_acl_name", disabled=not chk_sec_ssh_v4_acl)
             with c_ssh2:
-                st.checkbox("Verify SSH IPv6 ACL (`VerifySSHIPv6Acl`)", key="chk_sec_ssh_v6_acl")
-                st.text_input("SSH IPv6 ACL Name", value=st.session_state.get("param_sec_ssh_v6_acl_name", "ACL-SSH-V6"), key="param_sec_ssh_v6_acl_name", disabled=not st.session_state.get("chk_sec_ssh_v6_acl", False))
+                chk_sec_ssh_v6_acl = bind_checkbox("Verify SSH IPv6 ACL (`VerifySSHIPv6Acl`)", key="chk_sec_ssh_v6_acl")
+                st.text_input("SSH IPv6 ACL Name", value=st.session_state.get("param_sec_ssh_v6_acl_name", "ACL-SSH-V6"), key="param_sec_ssh_v6_acl_name", disabled=not chk_sec_ssh_v6_acl)
 
             st.divider()
-            st.checkbox("Verify SSH Service Status (`VerifySSHStatus`)", key="chk_ssh_status")
+            bind_checkbox("Verify SSH Service Status (`VerifySSHStatus`)", key="chk_ssh_status")
 
             st.divider()
-            st.checkbox("Verify Telnet Status (`VerifyTelnetStatus` - Ensure Disabled)", key="chk_sec_telnet")
+            bind_checkbox("Verify Telnet Status (`VerifyTelnetStatus` - Ensure Disabled)", key="chk_sec_telnet")
 
-        # 14. SERVICES (EXPANDED SUITE)
+        # 14. SERVICES
         elif selected_cat == "Services":
-            st.checkbox("Verify Hostname (`VerifyHostname`)", key="chk_hostname")
-            st.text_input("Expected Hostname", value=st.session_state.get("param_service_hostname", "Switch-1"), key="param_service_hostname", disabled=not st.session_state.get("chk_hostname", False))
+            chk_hostname = bind_checkbox("Verify Hostname (`VerifyHostname`)", key="chk_hostname")
+            st.text_input("Expected Hostname", value=st.session_state.get("param_service_hostname", "Switch-1"), key="param_service_hostname", disabled=not chk_hostname)
 
             st.divider()
-            st.checkbox("Verify DNS Name Resolution (`VerifyDNSLookup`)", key="chk_svc_dns_lookup")
-            st.text_input("Domain Names to Resolve (comma-separated)", value=st.session_state.get("param_svc_dns_domains", "arista.com, google.com"), key="param_svc_dns_domains", disabled=not st.session_state.get("chk_svc_dns_lookup", False))
+            chk_svc_dns_lookup = bind_checkbox("Verify DNS Name Resolution (`VerifyDNSLookup`)", key="chk_svc_dns_lookup")
+            st.text_input("Domain Names to Resolve (comma-separated)", value=st.session_state.get("param_svc_dns_domains", "arista.com, google.com"), key="param_svc_dns_domains", disabled=not chk_svc_dns_lookup)
 
             st.divider()
-            st.checkbox("Verify Configured DNS Servers (`VerifyDNSServers`)", key="chk_svc_dns_servers")
+            chk_svc_dns_servers = bind_checkbox("Verify Configured DNS Servers (`VerifyDNSServers`)", key="chk_svc_dns_servers")
             c_dns1, c_dns2 = st.columns(2)
-            with c_dns1: st.text_input("DNS Server IPs (comma-separated)", value=st.session_state.get("param_svc_dns_srv_ips", "8.8.8.8, 1.1.1.1"), key="param_svc_dns_srv_ips", disabled=not st.session_state.get("chk_svc_dns_servers", False))
-            with c_dns2: st.text_input("DNS Servers VRF", value=st.session_state.get("param_svc_dns_srv_vrf", "default"), key="param_svc_dns_srv_vrf", disabled=not st.session_state.get("chk_svc_dns_servers", False))
+            with c_dns1: st.text_input("DNS Server IPs (comma-separated)", value=st.session_state.get("param_svc_dns_srv_ips", "8.8.8.8, 1.1.1.1"), key="param_svc_dns_srv_ips", disabled=not chk_svc_dns_servers)
+            with c_dns2: st.text_input("DNS Servers VRF", value=st.session_state.get("param_svc_dns_srv_vrf", "default"), key="param_svc_dns_srv_vrf", disabled=not chk_svc_dns_servers)
 
             st.divider()
-            st.checkbox("Verify Errdisable Recovery (`VerifyErrdisableRecovery`)", key="chk_svc_errdisable_rec")
+            bind_checkbox("Verify Errdisable Recovery (`VerifyErrdisableRecovery`)", key="chk_svc_errdisable_rec")
 
         # 15. FLOW TRACKING
         elif selected_cat == "Flow Tracking":
-            st.checkbox("Verify Hardware Flow Tracker Status (`VerifyHardwareFlowTrackerStatus`)", key="chk_flow_tracking")
-            st.text_input("Tracker Name", value=st.session_state.get("param_flow_tracker_name", "FLOW-TRACKER"), key="param_flow_tracker_name", disabled=not st.session_state.get("chk_flow_tracking", False))
+            chk_flow_tracking = bind_checkbox("Verify Hardware Flow Tracker Status (`VerifyHardwareFlowTrackerStatus`)", key="chk_flow_tracking")
+            st.text_input("Tracker Name", value=st.session_state.get("param_flow_tracker_name", "FLOW-TRACKER"), key="param_flow_tracker_name", disabled=not chk_flow_tracking)
 
         # 16. LANZ
         elif selected_cat == "LANZ":
-            st.checkbox("Verify LANZ Status (`VerifyLANZ`)", key="chk_lanz")
+            bind_checkbox("Verify LANZ Status (`VerifyLANZ`)", key="chk_lanz")
 
         # 17. LOGGING
         elif selected_cat == "Logging":
-            st.checkbox("Verify Persistent Logging (`VerifyLoggingPersistent`)", key="chk_log_persistent")
+            bind_checkbox("Verify Persistent Logging (`VerifyLoggingPersistent`)", key="chk_log_persistent")
             st.divider()
-            st.checkbox("Verify Logging Accounting (`VerifyLoggingAccounting`)", key="chk_log_accounting")
+            bind_checkbox("Verify Logging Accounting (`VerifyLoggingAccounting`)", key="chk_log_accounting")
             st.divider()
-            st.checkbox("Verify Logging Source Interface (`VerifyLoggingSourceIntf`)", key="chk_log_source_intf")
+            chk_log_source_intf = bind_checkbox("Verify Logging Source Interface (`VerifyLoggingSourceIntf`)", key="chk_log_source_intf")
             c_ls1, c_ls2 = st.columns(2)
-            with c_ls1: st.text_input("Source VRF", value=st.session_state.get("param_log_src_vrf", "default"), key="param_log_src_vrf", disabled=not st.session_state.get("chk_log_source_intf", False))
-            with c_ls2: st.text_input("Source Intf", value=st.session_state.get("param_log_src_intf", "Loopback0"), key="param_log_src_intf", disabled=not st.session_state.get("chk_log_source_intf", False))
+            with c_ls1: st.text_input("Source VRF", value=st.session_state.get("param_log_src_vrf", "default"), key="param_log_src_vrf", disabled=not chk_log_source_intf)
+            with c_ls2: st.text_input("Source Intf", value=st.session_state.get("param_log_src_intf", "Loopback0"), key="param_log_src_intf", disabled=not chk_log_source_intf)
             st.divider()
-            st.checkbox("Verify Logging Hosts (`VerifyLoggingHosts`)", key="chk_log_hosts")
+            chk_log_hosts = bind_checkbox("Verify Logging Hosts (`VerifyLoggingHosts`)", key="chk_log_hosts")
             c_lh1, c_lh2 = st.columns(2)
-            with c_lh1: st.text_input("Host IPs (comma-sep)", value=st.session_state.get("param_log_hosts_ips", "10.0.0.1"), key="param_log_hosts_ips", disabled=not st.session_state.get("chk_log_hosts", False))
-            with c_lh2: st.text_input("Hosts VRF", value=st.session_state.get("param_log_hosts_vrf", "default"), key="param_log_hosts_vrf", disabled=not st.session_state.get("chk_log_hosts", False))
+            with c_lh1: st.text_input("Host IPs (comma-sep)", value=st.session_state.get("param_log_hosts_ips", "10.0.0.1"), key="param_log_hosts_ips", disabled=not chk_log_hosts)
+            with c_lh2: st.text_input("Hosts VRF", value=st.session_state.get("param_log_hosts_vrf", "default"), key="param_log_hosts_vrf", disabled=not chk_log_hosts)
 
         # 18. PATH SELECTION
         elif selected_cat == "Path Selection":
-            st.checkbox("Verify Path Selection Health (`VerifyPathsHealth`)", key="chk_path_sel_health")
+            bind_checkbox("Verify Path Selection Health (`VerifyPathsHealth`)", key="chk_path_sel_health")
 
         # 19. SNMP
         elif selected_cat == "SNMP":
-            st.checkbox("Verify SNMP Status (`VerifySnmpStatus`)", key="chk_snmp_status")
-            st.text_input("SNMP VRF", value=st.session_state.get("param_snmp_vrf", "default"), key="param_snmp_vrf", disabled=not st.session_state.get("chk_snmp_status", False))
+            chk_snmp_status = bind_checkbox("Verify SNMP Status (`VerifySnmpStatus`)", key="chk_snmp_status")
+            st.text_input("SNMP VRF", value=st.session_state.get("param_snmp_vrf", "default"), key="param_snmp_vrf", disabled=not chk_snmp_status)
 
         # 20. VLAN
         elif selected_cat == "VLAN":
-            st.checkbox("Verify VLAN Internal Policy (`VerifyVlanInternalPolicy`)", key="chk_vlan_internal")
-            st.selectbox("Allocation Policy", ["ascending", "descending"], key="param_vlan_alloc_policy", disabled=not st.session_state.get("chk_vlan_internal", False))
+            chk_vlan_internal = bind_checkbox("Verify VLAN Internal Policy (`VerifyVlanInternalPolicy`)", key="chk_vlan_internal")
+            st.selectbox("Allocation Policy", ["ascending", "descending"], key="param_vlan_alloc_policy", disabled=not chk_vlan_internal)
             col_v1, col_v2 = st.columns(2)
-            with col_v1: st.number_input("Start VLAN ID", min_value=1, max_value=4094, value=st.session_state.get("param_vlan_start_id", 1006), key="param_vlan_start_id", disabled=not st.session_state.get("chk_vlan_internal", False))
-            with col_v2: st.number_input("End VLAN ID", min_value=1, max_value=4094, value=st.session_state.get("param_vlan_end_id", 4094), key="param_vlan_end_id", disabled=not st.session_state.get("chk_vlan_internal", False))
+            with col_v1: st.number_input("Start VLAN ID", min_value=1, max_value=4094, value=st.session_state.get("param_vlan_start_id", 1006), key="param_vlan_start_id", disabled=not chk_vlan_internal)
+            with col_v2: st.number_input("End VLAN ID", min_value=1, max_value=4094, value=st.session_state.get("param_vlan_end_id", 4094), key="param_vlan_end_id", disabled=not chk_vlan_internal)
 
         # 21. CUSTOM YAML
         elif selected_cat == "Custom YAML":
