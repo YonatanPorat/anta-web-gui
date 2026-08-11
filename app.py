@@ -782,13 +782,36 @@ with tab_catalog:
         "chk_vlan_internal": ("anta.tests.vlan", "VerifyVlanInternalPolicy", {"policy": st.session_state.get("param_vlan_policy", "ascending"), "start_vlan_id": int(st.session_state.get("param_vlan_start", 1006)), "end_vlan_id": int(st.session_state.get("param_vlan_end", 4094))})
     }
 
-    # Map dynamic config rules if box is ticked
+    # Map dynamic config rules if box is ticked (Fixed ANTA compliance schema)
     if st.session_state.get("chk_cfg_rules") and st.session_state.get("cfg_rules_data"):
         cfg_rules_parsed = []
+        rules_map = {}
+        
         for row in st.session_state.cfg_rules_data:
             match_val = str(row.get("Match", "")).strip()
-            if match_val:
-                cfg_rules_parsed.append({"match": match_val, "mode": row.get("Mode", "exact")})
+            if not match_val:
+                continue
+                
+            sec_val = str(row.get("Section", "")).strip()
+            mode_val = row.get("Mode", "exact")
+            absent_val = bool(row.get("Absent", False))
+            desc_val = str(row.get("Description", "")).strip()
+            
+            entry = {"match": match_val}
+            if mode_val != "exact": entry["mode"] = mode_val
+            if absent_val: entry["absent"] = True
+            if desc_val: entry["description"] = desc_val
+                
+            if sec_val not in rules_map:
+                rules_map[sec_val] = []
+            rules_map[sec_val].append(entry)
+            
+        for sec, entries in rules_map.items():
+            rule = {"entries": entries}
+            if sec:
+                rule["section"] = [s.strip() for s in sec.split(",") if s.strip()]
+            cfg_rules_parsed.append(rule)
+            
         if cfg_rules_parsed:
             add_test("anta.tests.configuration", "VerifyRunningConfig", {"rules": cfg_rules_parsed})
 
