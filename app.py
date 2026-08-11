@@ -197,7 +197,7 @@ with tab_creds:
         st.success("✅ Credentials saved!")
 
 # ==========================================
-# TAB 2: INVENTORY
+# TAB 2: INVENTORY (Fixed Keys Added)
 # ==========================================
 with tab_inventory:
     st.subheader("Inventory Manager")
@@ -211,9 +211,9 @@ with tab_inventory:
     df_ranges = pd.DataFrame([dict(r) for r in anta_inv.get("ranges", [])])
 
     sub_hosts, sub_networks, sub_ranges = st.tabs(["🖥️ Specific Hosts", "🌐 Networks (CIDR)", "🔢 IP Ranges"])
-    with sub_hosts: edited_hosts = st.data_editor(df_hosts, num_rows="dynamic", use_container_width=True)
-    with sub_networks: edited_networks = st.data_editor(df_networks, num_rows="dynamic", use_container_width=True)
-    with sub_ranges: edited_ranges = st.data_editor(df_ranges, num_rows="dynamic", use_container_width=True)
+    with sub_hosts: edited_hosts = st.data_editor(df_hosts, num_rows="dynamic", use_container_width=True, key="editor_hosts")
+    with sub_networks: edited_networks = st.data_editor(df_networks, num_rows="dynamic", use_container_width=True, key="editor_networks")
+    with sub_ranges: edited_ranges = st.data_editor(df_ranges, num_rows="dynamic", use_container_width=True, key="editor_ranges")
 
 # ==========================================
 # TAB 3: CATALOG BUILDER (COMPLETE SUITE)
@@ -271,7 +271,7 @@ with tab_catalog:
             if st.session_state.get("chk_cfg_rules"):
                 if "cfg_rules_data" not in st.session_state:
                     st.session_state.cfg_rules_data = saved_settings.get("cfg_rules_data", default_config_rules)
-                edited_cfg_rules = st.data_editor(pd.DataFrame(st.session_state.cfg_rules_data), num_rows="dynamic", use_container_width=True)
+                edited_cfg_rules = st.data_editor(pd.DataFrame(st.session_state.cfg_rules_data), num_rows="dynamic", use_container_width=True, key="editor_cfg_rules")
                 st.session_state.cfg_rules_data = edited_cfg_rules.to_dict("records")
             bind_cb("Verify Running Config Diffs (`VerifyRunningConfigDiffs`)", "chk_cfg_diff")
             bind_cb("Verify Running Config Lines (`VerifyRunningConfigLines`)", "chk_cfg_lines")
@@ -614,7 +614,6 @@ with tab_catalog:
         "chk_sys_uptime": ("anta.tests.system", "VerifyUptime", {"minimum": int(st.session_state.get("param_sys_uptime_val", 60))})
     }
 
-    # Map dynamic config rules if box is ticked
     if st.session_state.get("chk_cfg_rules") and st.session_state.get("cfg_rules_data"):
         cfg_rules_parsed = []
         for row in st.session_state.cfg_rules_data:
@@ -624,7 +623,6 @@ with tab_catalog:
         if cfg_rules_parsed:
             add_test("anta.tests.configuration", "VerifyRunningConfig", {"rules": cfg_rules_parsed})
 
-    # Loop through state and dynamically append configured tests
     for k, (mod, test_cls, params) in key_to_test_map.items():
         if st.session_state.get(k, False):
             add_test(mod, test_cls, params)
