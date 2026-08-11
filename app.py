@@ -547,7 +547,11 @@ with tab_catalog:
             bind_cb("Verify MOTD Banner (`VerifyBannerMotd`)", "chk_sec_banner_motd")
             bind_cb("Verify Hardware Entropy (`VerifyHardwareEntropy`)", "chk_sec_entropy")
             bind_cb("Verify IPSec Health (`VerifyIPSecConnHealth`)", "chk_sec_ipsec_health")
+            
             bind_cb("Verify IPv4 ACL (`VerifyIPv4ACL`)", "chk_sec_v4_acl")
+            if st.session_state.get("chk_sec_v4_acl"):
+                st.text_input("IPv4 Access List Name", value=st.session_state.get("param_sec_v4_acl_name", "ACL-MGMT"), key="param_sec_v4_acl_name")
+
             bind_cb("Verify SSH FIPS (`VerifySSHFIPSRestrictions`)", "chk_sec_fips")
             bind_cb("Verify SSH IPv4 ACL (`VerifySSHIPv4Acl`)", "chk_sec_ssh_v4_acl")
             bind_cb("Verify SSH IPv6 ACL (`VerifySSHIPv6Acl`)", "chk_sec_ssh_v6_acl")
@@ -557,7 +561,15 @@ with tab_catalog:
 
         elif selected_cat == "Services":
             bind_cb("Verify DNS Lookup (`VerifyDNSLookup`)", "chk_svc_dns_lookup")
+            if st.session_state.get("chk_svc_dns_lookup"):
+                st.text_input("Domains to Resolve (comma-separated)", value=st.session_state.get("param_svc_dns_domains", "arista.com"), key="param_svc_dns_domains")
+
             bind_cb("Verify DNS Servers (`VerifyDNSServers`)", "chk_svc_dns_servers")
+            if st.session_state.get("chk_svc_dns_servers"):
+                col1, col2 = st.columns(2)
+                with col1: st.text_input("DNS Server IPs (comma-separated)", value=st.session_state.get("param_svc_dns_ips", "8.8.8.8"), key="param_svc_dns_ips")
+                with col2: st.text_input("VRF", value=st.session_state.get("param_svc_dns_vrf", "default"), key="param_svc_dns_vrf")
+
             bind_cb("Verify Errdisable Recovery (`VerifyErrdisableRecovery`)", "chk_svc_errdisable_rec")
             
             bind_cb("Verify Hostname (`VerifyHostname`)", "chk_hostname")
@@ -566,16 +578,37 @@ with tab_catalog:
 
         elif selected_cat == "SNMP":
             bind_cb("Verify SNMP Contact (`VerifySnmpContact`)", "chk_snmp_contact")
+            if st.session_state.get("chk_snmp_contact"):
+                st.text_input("Expected Contact Email/String", value=st.session_state.get("param_snmp_contact_val", "admin@domain.com"), key="param_snmp_contact_val")
+
             bind_cb("Verify SNMP Errors (`VerifySnmpErrorCounters`)", "chk_snmp_errors")
             bind_cb("Verify SNMP Group (`VerifySnmpGroup`)", "chk_snmp_group")
             bind_cb("Verify SNMP Logging (`VerifySnmpHostLogging`)", "chk_snmp_logging")
+            
             bind_cb("Verify SNMP IPv4 ACL (`VerifySnmpIPv4Acl`)", "chk_snmp_v4_acl")
+            if st.session_state.get("chk_snmp_v4_acl"):
+                col1, col2 = st.columns(2)
+                with col1: st.text_input("SNMP IPv4 ACL Name", value=st.session_state.get("param_snmp_v4_acl_name", "ACL-SNMP-V4"), key="param_snmp_v4_acl_name")
+                with col2: st.text_input("VRF", value=st.session_state.get("param_snmp_v4_acl_vrf", "default"), key="param_snmp_v4_acl_vrf")
+
             bind_cb("Verify SNMP IPv6 ACL (`VerifySnmpIPv6Acl`)", "chk_snmp_v6_acl")
+            if st.session_state.get("chk_snmp_v6_acl"):
+                col1, col2 = st.columns(2)
+                with col1: st.text_input("SNMP IPv6 ACL Name", value=st.session_state.get("param_snmp_v6_acl_name", "ACL-SNMP-V6"), key="param_snmp_v6_acl_name")
+                with col2: st.text_input("VRF", value=st.session_state.get("param_snmp_v6_acl_vrf", "default"), key="param_snmp_v6_acl_vrf")
+
             bind_cb("Verify SNMP Location (`VerifySnmpLocation`)", "chk_snmp_location")
+            if st.session_state.get("chk_snmp_location"):
+                st.text_input("Expected Location String", value=st.session_state.get("param_snmp_location_val", "DataCenter-Rack1"), key="param_snmp_location_val")
+
             bind_cb("Verify SNMP Notification (`VerifySnmpNotificationHost`)", "chk_snmp_notification")
             bind_cb("Verify SNMP PDU (`VerifySnmpPDUCounters`)", "chk_snmp_pdu")
             bind_cb("Verify SNMP Source Intf (`VerifySnmpSourceInterface`)", "chk_snmp_source")
+            
             bind_cb("Verify SNMP Status (`VerifySnmpStatus`)", "chk_snmp_status")
+            if st.session_state.get("chk_snmp_status"):
+                st.text_input("SNMP VRF", value=st.session_state.get("param_snmp_vrf", "default"), key="param_snmp_vrf")
+
             bind_cb("Verify SNMP User (`VerifySnmpUser`)", "chk_snmp_user")
 
         elif selected_cat == "Software":
@@ -599,7 +632,10 @@ with tab_catalog:
         elif selected_cat == "STUN":
             bind_cb("Verify STUN Client (`VerifyStunClient`)", "chk_stun_client")
             bind_cb("Verify STUN Client Translation (`VerifyStunClientTranslation`)", "chk_stun_client_trans")
+            
             bind_cb("Verify STUN Server (`VerifyStunServer`)", "chk_stun_status")
+            if st.session_state.get("chk_stun_status"):
+                st.text_input("STUN Server Host/IP", value=st.session_state.get("param_stun_server", "stun.l.google.com"), key="param_stun_server")
 
         elif selected_cat == "System":
             bind_cb("Verify Agent Logs (`VerifyAgentLogs`)", "chk_sys_agent_logs")
@@ -620,7 +656,14 @@ with tab_catalog:
 
         elif selected_cat == "VLAN":
             bind_cb("Verify Dynamic VLAN Source (`VerifyDynamicVlanSource`)", "chk_vlan_dynamic")
+            
             bind_cb("Verify Internal VLAN Policy (`VerifyVlanInternalPolicy`)", "chk_vlan_internal")
+            if st.session_state.get("chk_vlan_internal"):
+                col1, col2, col3 = st.columns(3)
+                with col1: st.selectbox("Policy", ["ascending", "descending"], key="param_vlan_policy")
+                with col2: st.number_input("Start VLAN ID", value=st.session_state.get("param_vlan_start", 1006), key="param_vlan_start")
+                with col3: st.number_input("End VLAN ID", value=st.session_state.get("param_vlan_end", 4094), key="param_vlan_end")
+
             bind_cb("Verify VLAN Status (`VerifyVlanStatus`)", "chk_vlan_status")
 
         elif selected_cat == "Custom":
@@ -638,8 +681,8 @@ with tab_catalog:
 
     # Key to Module & Test Class mappings
     key_to_test_map = {
-        "chk_aaa_authen": ("anta.tests.aaa", "VerifyAuthenMethods", {"methods": [st.session_state.get("param_aaa_authen_methods", "local")]}),
-        "chk_aaa_authz": ("anta.tests.aaa", "VerifyAuthzMethods", {"methods": [st.session_state.get("param_aaa_authz_methods", "group tacacs+")]}),
+        "chk_aaa_authen": ("anta.tests.aaa", "VerifyAuthenMethods", {"methods": [m.strip() for m in st.session_state.get("param_aaa_authen_methods", "local").split(",") if m.strip()]}),
+        "chk_aaa_authz": ("anta.tests.aaa", "VerifyAuthzMethods", {"methods": [m.strip() for m in st.session_state.get("param_aaa_authz_methods", "group tacacs+").split(",") if m.strip()]}),
         "chk_aaa_acct_default": ("anta.tests.aaa", "VerifyAcctDefaultMethods", None),
         "chk_aaa_acct_console": ("anta.tests.aaa", "VerifyAcctConsoleMethods", None),
         "chk_aaa_tacacs_src": ("anta.tests.aaa", "VerifyTacacsSourceIntf", {"intf": st.session_state.get("param_aaa_tacacs_intf", "Management1")}),
@@ -725,7 +768,18 @@ with tab_catalog:
         "chk_rt_nexthops": ("anta.tests.routing.generic", "VerifyIPv4RouteNextHops", {"route_entries": [{"prefix": st.session_state.get("param_rt_nh_prefix", "10.0.0.0/24"), "nexthops": [ip.strip() for ip in st.session_state.get("param_rt_nh_ips", "10.100.0.1").split(",") if ip.strip()]}]}),
         "chk_rt_presence_prefix": ("anta.tests.routing.generic", "VerifyIPv4RoutePresencePerPrefix", {"prefixes": [p.strip() for p in st.session_state.get("param_rt_pres_prefixes", "10.0.0.0/24").split(",") if p.strip()]}),
         "chk_rt_size": ("anta.tests.routing.generic", "VerifyRoutingTableSize", {"minimum": int(st.session_state.get("param_rt_sz_min", 1)), "maximum": int(st.session_state.get("param_rt_sz_max", 10000))}),
-        "chk_hostname": ("anta.tests.services", "VerifyHostname", {"hostname": st.session_state.get("param_service_hostname", "Switch-1")})
+        "chk_hostname": ("anta.tests.services", "VerifyHostname", {"hostname": st.session_state.get("param_service_hostname", "Switch-1")}),
+        
+        "chk_snmp_contact": ("anta.tests.snmp", "VerifySnmpContact", {"contact": st.session_state.get("param_snmp_contact_val", "admin@domain.com")}),
+        "chk_snmp_location": ("anta.tests.snmp", "VerifySnmpLocation", {"location": st.session_state.get("param_snmp_location_val", "DataCenter-Rack1")}),
+        "chk_snmp_v4_acl": ("anta.tests.snmp", "VerifySnmpIPv4Acl", {"access_list": st.session_state.get("param_snmp_v4_acl_name", "ACL-SNMP-V4"), "vrf": st.session_state.get("param_snmp_v4_acl_vrf", "default")}),
+        "chk_snmp_v6_acl": ("anta.tests.snmp", "VerifySnmpIPv6Acl", {"access_list": st.session_state.get("param_snmp_v6_acl_name", "ACL-SNMP-V6"), "vrf": st.session_state.get("param_snmp_v6_acl_vrf", "default")}),
+        "chk_snmp_status": ("anta.tests.snmp", "VerifySnmpStatus", {"vrf": st.session_state.get("param_snmp_vrf", "default")}),
+        "chk_sec_v4_acl": ("anta.tests.security", "VerifyIPv4ACL", {"acl": st.session_state.get("param_sec_v4_acl_name", "ACL-MGMT")}),
+        "chk_svc_dns_lookup": ("anta.tests.services", "VerifyDNSLookup", {"domain_names": [d.strip() for d in st.session_state.get("param_svc_dns_domains", "arista.com").split(",") if d.strip()]}),
+        "chk_svc_dns_servers": ("anta.tests.services", "VerifyDNSServers", {"dns_servers": [{"server": ip.strip(), "vrf": st.session_state.get("param_svc_dns_vrf", "default")} for ip in st.session_state.get("param_svc_dns_ips", "8.8.8.8").split(",") if ip.strip()]}),
+        "chk_stun_status": ("anta.tests.stun", "VerifyStunServer", {"server": st.session_state.get("param_stun_server", "stun.l.google.com")}),
+        "chk_vlan_internal": ("anta.tests.vlan", "VerifyVlanInternalPolicy", {"policy": st.session_state.get("param_vlan_policy", "ascending"), "start_vlan_id": int(st.session_state.get("param_vlan_start", 1006)), "end_vlan_id": int(st.session_state.get("param_vlan_end", 4094))})
     }
 
     # Map dynamic config rules if box is ticked
