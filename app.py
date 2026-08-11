@@ -29,7 +29,7 @@ def save_settings(data_dict):
 
 saved_settings = load_settings()
 
-st.title("🚀 Arista ANTA Web GUI (v2.8)")
+st.title("🚀 Arista ANTA Web GUI (v2.9)")
 st.markdown("Manage your devices, tests, and run validations without writing any code.")
 st.divider()
 
@@ -207,7 +207,7 @@ with tab_catalog:
     st.caption("Select tests and configure parameters using the category navigation on the right.")
 
     ALL_TEST_KEYS = [
-        "chk_hw_trans", "chk_hw_cool", "chk_hw_power", "chk_hw_temp",
+        "chk_hw_trans", "chk_hw_cool", "chk_hw_power", "chk_hw_temp", "chk_hw_trans_presence", "chk_hw_trans_optics", "chk_hw_pse",
         "chk_sys_uptime", "chk_sys_ntp", "chk_sys_coredump", "chk_sys_reload",
         "chk_aaa_authen", "chk_aaa_authz", "chk_aaa_acct_default", "chk_aaa_acct_console",
         "chk_aaa_tacacs_src", "chk_aaa_tacacs_servers", "chk_aaa_tacacs_groups",
@@ -357,7 +357,7 @@ with tab_catalog:
         st.markdown("### 📂 Categories")
         
         categories_map = {
-            "🔌 Hardware": "Hardware",
+            "🔌 Hardware (Full Suite)": "Hardware",
             "💻 System": "System",
             "🔐 AAA Suite": "AAA",
             "⚙️ Configuration": "Configuration",
@@ -392,11 +392,18 @@ with tab_catalog:
     with main_content_col:
         st.markdown(f"### {selected_cat_label}")
         
-        # 1. HARDWARE
+        # 1. HARDWARE (COMPLETE SUITE)
         if selected_cat == "Hardware":
             hw_trans = st.checkbox("Verify Transceivers Manufacturers (`VerifyTransceiversManufacturers`)", key="chk_hw_trans")
             hw_trans_mfg = st.text_input("Expected Manufacturers (comma-separated)", "Arista Networks, ARISTA", disabled=not hw_trans)
             
+            st.divider()
+            hw_trans_pres = st.checkbox("Verify Transceivers Presence (`VerifyTransceiversPresence`)", key="chk_hw_trans_presence")
+            hw_trans_pres_intfs = st.text_input("Interfaces to check presence (comma-separated)", "Ethernet1, Ethernet2", disabled=not hw_trans_pres)
+
+            st.divider()
+            hw_trans_opt = st.checkbox("Verify Transceivers Optics Status (`VerifyTransceiversOptics`)", key="chk_hw_trans_optics")
+
             st.divider()
             hw_cool = st.checkbox("Verify System Cooling (`VerifyEnvironmentSystemCooling`)", key="chk_hw_cool")
             
@@ -406,6 +413,9 @@ with tab_catalog:
             
             st.divider()
             hw_temp = st.checkbox("Verify Temperature (`VerifyTemperature`)", key="chk_hw_temp")
+
+            st.divider()
+            hw_pse = st.checkbox("Verify PSE Status - PoE (`VerifyPseStatus`)", key="chk_hw_pse")
 
         # 2. SYSTEM
         elif selected_cat == "System":
@@ -697,12 +707,19 @@ with tab_catalog:
         mfg_val = locals().get("hw_trans_mfg", "Arista Networks, ARISTA")
         mfg_list = [m.strip() for m in mfg_val.split(",") if m.strip()]
         add_test("anta.tests.hardware", {"VerifyTransceiversManufacturers": {"manufacturers": mfg_list}})
+    if st.session_state.get("chk_hw_trans_presence", False):
+        pres_val = locals().get("hw_trans_pres_intfs", "Ethernet1, Ethernet2")
+        intf_list = [{"name": i.strip()} for i in pres_val.split(",") if i.strip()]
+        add_test("anta.tests.hardware", {"VerifyTransceiversPresence": {"interfaces": intf_list}})
+    if st.session_state.get("chk_hw_trans_optics", False):
+        add_test("anta.tests.hardware", {"VerifyTransceiversOptics": None})
     if st.session_state.get("chk_hw_cool", False): add_test("anta.tests.hardware", {"VerifyEnvironmentSystemCooling": None})
     if st.session_state.get("chk_hw_power", False): 
         pwr_val = locals().get("hw_power_states", "ok")
         states_list = [s.strip() for s in pwr_val.split(",") if s.strip()]
         add_test("anta.tests.hardware", {"VerifyEnvironmentPower": {"states": states_list}})
     if st.session_state.get("chk_hw_temp", False): add_test("anta.tests.hardware", {"VerifyTemperature": None})
+    if st.session_state.get("chk_hw_pse", False): add_test("anta.tests.hardware", {"VerifyPseStatus": None})
         
     # System
     if st.session_state.get("chk_sys_uptime", False): add_test("anta.tests.system", {"VerifyUptime": {"minimum": int(locals().get("sys_uptime_val", 60))}})
