@@ -112,13 +112,23 @@ DEFAULT_PROFILES = {
 
 active_profiles = saved_settings.get("profiles", DEFAULT_PROFILES)
 
-saved_test_keys = saved_settings.get("selected_test_keys", None)
+# Initialize master state dictionary to prevent Streamlit widget cleanup bugs
+if "master_test_states" not in st.session_state:
+    st.session_state["master_test_states"] = {}
+    saved_test_keys = saved_settings.get("selected_test_keys", None)
+    for k in ALL_TEST_KEYS:
+        if saved_test_keys is not None:
+            st.session_state["master_test_states"][k] = (k in saved_test_keys)
+        else:
+            st.session_state["master_test_states"][k] = (k in DEFAULT_PROFILES["🟢 Basic NRFU (Quick Check)"]["keys"])
+
+# Ensure every key exists in session_state for rendering
 for k in ALL_TEST_KEYS:
     if k not in st.session_state:
-        if saved_test_keys is not None:
-            st.session_state[k] = (k in saved_test_keys)
-        else:
-            st.session_state[k] = (k in DEFAULT_PROFILES["🟢 Basic NRFU (Quick Check)"]["keys"])
+        st.session_state[k] = st.session_state["master_test_states"].get(k, False)
+
+def update_test_state(key):
+    st.session_state["master_test_states"][key] = st.session_state[key]
 
 # ==========================================
 # STREAMLIT SIDEBAR: GLOBAL CONTROLS
@@ -138,7 +148,9 @@ with st.sidebar:
             p_data = active_profiles.get(selected_prof_name, {})
             p_keys = set(p_data.get("keys", []))
             for k in ALL_TEST_KEYS:
-                st.session_state[k] = (k in p_keys)
+                is_sel = (k in p_keys)
+                st.session_state["master_test_states"][k] = is_sel
+                st.session_state[k] = is_sel
             st.session_state.cfg_rules_data = p_data.get("cfg_rules", default_config_rules)
             save_settings({"selected_test_keys": list(p_keys)})
             st.success(f"Loaded '{selected_prof_name}'!")
@@ -146,7 +158,7 @@ with st.sidebar:
 
     with col_prof2:
         if st.button("💾 Save", use_container_width=True):
-            current_keys = [k for k in ALL_TEST_KEYS if st.session_state.get(k, False)]
+            current_keys = [k for k in ALL_TEST_KEYS if st.session_state["master_test_states"].get(k, False)]
             active_profiles[selected_prof_name] = {
                 "keys": current_keys,
                 "cfg_rules": st.session_state.get("cfg_rules_data", default_config_rules)
@@ -160,12 +172,13 @@ with st.sidebar:
 
     st.markdown("---")
     def toggle_select_all():
-        current_all_selected = all(st.session_state.get(k, False) for k in ALL_TEST_KEYS)
+        current_all_selected = all(st.session_state["master_test_states"].get(k, False) for k in ALL_TEST_KEYS)
         new_state = not current_all_selected
         for k in ALL_TEST_KEYS:
+            st.session_state["master_test_states"][k] = new_state
             st.session_state[k] = new_state
 
-    is_all_selected = all(st.session_state.get(k, False) for k in ALL_TEST_KEYS)
+    is_all_selected = all(st.session_state["master_test_states"].get(k, False) for k in ALL_TEST_KEYS)
     select_label = "❌ Deselect All Tests" if is_all_selected else "✅ Select All Tests"
     st.button(select_label, on_click=toggle_select_all, use_container_width=True)
 
@@ -237,54 +250,61 @@ with tab_catalog:
 
     with main_content_col:
         st.markdown(f"### {selected_cat_label}")
-        def bind_cb(label, key): return st.checkbox(label, value=st.session_state.get(key, False), key=key)
+        def bind_cb(label, key):
+            return st.checkbox(
+                label,
+                value=st.session_state["master_test_states"].get(key, False),
+                key=key,
+                on_change=update_test_state,
+                args=(key,)
+            )
 
         if selected_cat == "AAA":
             bind_cb("Verify Authentication Methods (`VerifyAuthenMethods`)", "chk_aaa_authen")
-            if st.session_state.get("chk_aaa_authen"):
+            if st.session_state["master_test_states"].get("chk_aaa_authen"):
                 c1, c2 = st.columns(2)
                 with c1: st.text_input("Expected Auth Methods (comma-separated)", value=st.session_state.get("param_aaa_authen_methods", "local"), key="param_aaa_authen_methods")
                 with c2: st.selectbox("Auth Type", ["login", "enable", "dot1x"], key="param_aaa_authen_types")
             
             bind_cb("Verify Authorization Methods (`VerifyAuthzMethods`)", "chk_aaa_authz")
-            if st.session_state.get("chk_aaa_authz"):
+            if st.session_state["master_test_states"].get("chk_aaa_authz"):
                 c1, c2 = st.columns(2)
                 with c1: st.text_input("Expected Authz Methods (comma-separated)", value=st.session_state.get("param_aaa_authz_methods", "group tacacs+"), key="param_aaa_authz_methods")
                 with c2: st.selectbox("Authz Type", ["exec", "commands"], key="param_aaa_authz_types")
             
             bind_cb("Verify Accounting Default (`VerifyAcctDefaultMethods`)", "chk_aaa_acct_default")
-            if st.session_state.get("chk_aaa_acct_default"):
+            if st.session_state["master_test_states"].get("chk_aaa_acct_default"):
                 c1, c2 = st.columns(2)
                 with c1: st.text_input("Acct Default Methods (comma-separated)", value=st.session_state.get("param_aaa_acct_def_methods", "group tacacs+, local"), key="param_aaa_acct_def_methods")
                 with c2: st.selectbox("Acct Default Type", ["exec", "system", "commands", "dot1x"], key="param_aaa_acct_def_types")
 
             bind_cb("Verify Accounting Console (`VerifyAcctConsoleMethods`)", "chk_aaa_acct_console")
-            if st.session_state.get("chk_aaa_acct_console"):
+            if st.session_state["master_test_states"].get("chk_aaa_acct_console"):
                 c1, c2 = st.columns(2)
                 with c1: st.text_input("Acct Console Methods (comma-separated)", value=st.session_state.get("param_aaa_acct_con_methods", "local"), key="param_aaa_acct_con_methods")
                 with c2: st.selectbox("Acct Console Type", ["exec", "system", "commands", "dot1x"], key="param_aaa_acct_con_types")
             
             bind_cb("Verify TACACS Source Intf (`VerifyTacacsSourceIntf`)", "chk_aaa_tacacs_src")
-            if st.session_state.get("chk_aaa_tacacs_src"):
+            if st.session_state["master_test_states"].get("chk_aaa_tacacs_src"):
                 st.text_input("TACACS Source Interface", value=st.session_state.get("param_aaa_tacacs_intf", "Management1"), key="param_aaa_tacacs_intf")
             
             bind_cb("Verify TACACS Servers (`VerifyTacacsServers`)", "chk_aaa_tacacs_servers")
-            if st.session_state.get("chk_aaa_tacacs_servers"):
+            if st.session_state["master_test_states"].get("chk_aaa_tacacs_servers"):
                 st.text_input("TACACS Server IPs (comma-separated)", value=st.session_state.get("param_aaa_tacacs_ips", "10.1.1.1"), key="param_aaa_tacacs_ips")
             
             bind_cb("Verify TACACS Server Groups (`VerifyTacacsServerGroups`)", "chk_aaa_tacacs_groups")
-            if st.session_state.get("chk_aaa_tacacs_groups"):
+            if st.session_state["master_test_states"].get("chk_aaa_tacacs_groups"):
                 st.text_input("TACACS Group Names (comma-separated)", value=st.session_state.get("param_aaa_tacacs_groups_val", "TACACS-SERVERS"), key="param_aaa_tacacs_groups_val")
 
         elif selected_cat == "AVT_BFD":
             bind_cb("Verify AVT Path Health (`VerifyAVTPathHealth`)", "chk_avt_path")
             
             bind_cb("Verify AVT Role (`VerifyAVTRole`)", "chk_avt_role")
-            if st.session_state.get("chk_avt_role"):
+            if st.session_state["master_test_states"].get("chk_avt_role"):
                 st.selectbox("AVT Role", ["edge", "core", "path-finder"], key="param_avt_role_val")
                 
             bind_cb("Verify AVT Specific Path (`VerifyAVTSpecificPath`)", "chk_avt_specific_path")
-            if st.session_state.get("chk_avt_specific_path"):
+            if st.session_state["master_test_states"].get("chk_avt_specific_path"):
                 col1, col2, col3, col4 = st.columns(4)
                 with col1: st.text_input("AVT Name", value=st.session_state.get("param_avt_spec_name", "AVT1"), key="param_avt_spec_name")
                 with col2: st.text_input("Destination IP", value=st.session_state.get("param_avt_spec_dest", "10.0.0.1"), key="param_avt_spec_dest")
@@ -295,7 +315,7 @@ with tab_catalog:
             bind_cb("Verify BFD Peers Health (`VerifyBFDPeersHealth`)", "chk_bfd_health")
             
             bind_cb("Verify BFD Peers Intervals (`VerifyBFDPeersIntervals`)", "chk_bfd_intervals")
-            if st.session_state.get("chk_bfd_intervals"):
+            if st.session_state["master_test_states"].get("chk_bfd_intervals"):
                 col1, col2, col3, col4, col5 = st.columns(5)
                 with col1: st.text_input("BFD Peer Address", value=st.session_state.get("param_bfd_int_ip", "10.0.0.1"), key="param_bfd_int_ip")
                 with col2: st.text_input("BFD Peer VRF", value=st.session_state.get("param_bfd_int_vrf", "default"), key="param_bfd_int_vrf")
@@ -304,14 +324,14 @@ with tab_catalog:
                 with col5: st.number_input("Multiplier", value=st.session_state.get("param_bfd_mult", 3), key="param_bfd_mult")
 
             bind_cb("Verify BFD Reg Protocols (`VerifyBFDPeersRegProtocols`)", "chk_bfd_protocols")
-            if st.session_state.get("chk_bfd_protocols"):
+            if st.session_state["master_test_states"].get("chk_bfd_protocols"):
                 col1, col2, col3 = st.columns(3)
                 with col1: st.text_input("BFD Reg Protocol Address", value=st.session_state.get("param_bfd_proto_ip", "10.0.0.1"), key="param_bfd_proto_ip")
                 with col2: st.text_input("BFD Reg Protocol VRF", value=st.session_state.get("param_bfd_proto_vrf", "default"), key="param_bfd_proto_vrf")
                 with col3: st.text_input("Protocols (comma-separated)", value=st.session_state.get("param_bfd_proto_list", "bgp"), key="param_bfd_proto_list")
 
             bind_cb("Verify BFD Specific Peers (`VerifyBFDSpecificPeers`)", "chk_bfd_specific")
-            if st.session_state.get("chk_bfd_specific"):
+            if st.session_state["master_test_states"].get("chk_bfd_specific"):
                 col1, col2 = st.columns(2)
                 with col1: st.text_input("BFD Specific Peer Address", value=st.session_state.get("param_bfd_spec_ip", "10.0.0.1"), key="param_bfd_spec_ip")
                 with col2: st.text_input("BFD Specific Peer VRF", value=st.session_state.get("param_bfd_spec_vrf", "default"), key="param_bfd_spec_vrf")
@@ -319,7 +339,7 @@ with tab_catalog:
         elif selected_cat == "Configuration":
             st.markdown("##### Dynamic Running Config Rules (`VerifyRunningConfig`)")
             bind_cb("Verify Running Config Rules (`VerifyRunningConfig`)", "chk_cfg_rules")
-            if st.session_state.get("chk_cfg_rules"):
+            if st.session_state["master_test_states"].get("chk_cfg_rules"):
                 if "cfg_rules_data" not in st.session_state:
                     st.session_state.cfg_rules_data = saved_settings.get("cfg_rules_data", default_config_rules)
                 edited_cfg_rules = st.data_editor(pd.DataFrame(st.session_state.cfg_rules_data), num_rows="dynamic", use_container_width=True, key="editor_cfg_rules")
@@ -328,55 +348,55 @@ with tab_catalog:
             bind_cb("Verify Running Config Diffs (`VerifyRunningConfigDiffs`)", "chk_cfg_diff")
             
             bind_cb("Verify Running Config Lines (`VerifyRunningConfigLines`)", "chk_cfg_lines")
-            if st.session_state.get("chk_cfg_lines"):
+            if st.session_state["master_test_states"].get("chk_cfg_lines"):
                 st.text_input("Regex Patterns (comma-separated)", value=st.session_state.get("param_cfg_lines_regex", "router bgp"), key="param_cfg_lines_regex")
             
             bind_cb("Verify Zero Touch (`VerifyZeroTouch`)", "chk_cfg_ztp")
             
             bind_cb("Verify Login Banner (`VerifyBannerLogin`)", "chk_cfg_banner_login")
-            if st.session_state.get("chk_cfg_banner_login"):
+            if st.session_state["master_test_states"].get("chk_cfg_banner_login"):
                 st.text_input("Expected Login Banner", value=st.session_state.get("param_banner_login_text", "Authorized Access Only"), key="param_banner_login_text")
             
             bind_cb("Verify MOTD Banner (`VerifyBannerMotd`)", "chk_cfg_banner_motd")
-            if st.session_state.get("chk_cfg_banner_motd"):
+            if st.session_state["master_test_states"].get("chk_cfg_banner_motd"):
                 st.text_input("Expected MOTD Banner", value=st.session_state.get("param_banner_motd_text", "Welcome"), key="param_banner_motd_text")
 
         elif selected_cat == "Connectivity":
             bind_cb("Verify LLDP Neighbors (`VerifyLLDPNeighbors`)", "chk_conn_lldp")
-            if st.session_state.get("chk_conn_lldp"):
+            if st.session_state["master_test_states"].get("chk_conn_lldp"):
                 col1, col2, col3 = st.columns(3)
                 with col1: st.text_input("LLDP Local Port", value=st.session_state.get("param_conn_lldp_port", "Ethernet1"), key="param_conn_lldp_port")
                 with col2: st.text_input("Neighbor Device Name", value=st.session_state.get("param_conn_lldp_dev", "switch2"), key="param_conn_lldp_dev")
                 with col3: st.text_input("Neighbor Port", value=st.session_state.get("param_conn_lldp_neighbor_port", "Ethernet1"), key="param_conn_lldp_neighbor_port")
 
             bind_cb("Verify Reachability (`VerifyReachability`)", "chk_conn_ping")
-            if st.session_state.get("chk_conn_ping"):
+            if st.session_state["master_test_states"].get("chk_conn_ping"):
                 st.text_input("Ping Destination IP(s) (comma-separated)", value=st.session_state.get("param_conn_dest", "8.8.8.8"), key="param_conn_dest")
 
         elif selected_cat == "CVX":
             bind_cb("Verify Active CVX Connections (`VerifyActiveCVXConnections`)", "chk_cvx_active")
-            if st.session_state.get("chk_cvx_active"):
+            if st.session_state["master_test_states"].get("chk_cvx_active"):
                 st.number_input("Connections Count", value=st.session_state.get("param_cvx_active_cnt", 1), key="param_cvx_active_cnt")
 
             bind_cb("Verify CVX Cluster Status (`VerifyCVXClusterStatus`)", "chk_cvx_cluster")
-            if st.session_state.get("chk_cvx_cluster"):
+            if st.session_state["master_test_states"].get("chk_cvx_cluster"):
                 col1, col2 = st.columns(2)
                 with col1: st.text_input("CVX Peer Address", value=st.session_state.get("param_cvx_peer_ip", "10.0.0.1"), key="param_cvx_peer_ip")
                 with col2: st.selectbox("CVX Peer Status", ["reachable", "joined"], key="param_cvx_peer_status")
 
             bind_cb("Verify Management CVX (`VerifyManagementCVX`)", "chk_cvx_mgmt")
-            if st.session_state.get("chk_cvx_mgmt"):
+            if st.session_state["master_test_states"].get("chk_cvx_mgmt"):
                 st.checkbox("Management CVX Enabled", value=st.session_state.get("param_cvx_mgmt_enabled", True), key="param_cvx_mgmt_enabled")
 
             bind_cb("Verify MCS Client Mounts (`VerifyMcsClientMounts`)", "chk_cvx_client_mounts")
             
             bind_cb("Verify MCS Server Mounts (`VerifyMcsServerMounts`)", "chk_cvx_server_mounts")
-            if st.session_state.get("chk_cvx_server_mounts"):
+            if st.session_state["master_test_states"].get("chk_cvx_server_mounts"):
                 st.number_input("Server Mounts Count", value=st.session_state.get("param_cvx_mcs_cnt", 1), key="param_cvx_mcs_cnt")
 
         elif selected_cat == "EVPN_VXLAN":
             bind_cb("Verify EVPN Type 5 Routes (`VerifyEVPNType5Routes`)", "chk_evpn_type5")
-            if st.session_state.get("chk_evpn_type5"):
+            if st.session_state["master_test_states"].get("chk_evpn_type5"):
                 col1, col2 = st.columns(2)
                 with col1: st.text_input("EVPN Prefix", value=st.session_state.get("param_evpn_prefix", "10.0.0.0/24"), key="param_evpn_prefix")
                 with col2: st.number_input("EVPN VNI", value=st.session_state.get("param_evpn_vni", 10010), key="param_evpn_vni")
@@ -394,7 +414,7 @@ with tab_catalog:
 
         elif selected_cat == "Flow_GreenT":
             bind_cb("Verify Hardware Flow Tracker (`VerifyHardwareFlowTrackerStatus`)", "chk_flow_tracking")
-            if st.session_state.get("chk_flow_tracking"):
+            if st.session_state["master_test_states"].get("chk_flow_tracking"):
                 st.text_input("Tracker Name", value=st.session_state.get("param_flow_tracker_name", "FLOW-TRACKER"), key="param_flow_tracker_name")
 
             bind_cb("Verify GreenT Policy (`VerifyGreenT`)", "chk_greent_policy")
@@ -402,14 +422,14 @@ with tab_catalog:
 
         elif selected_cat == "Hardware":
             bind_cb("Verify Linecards Absence (`VerifyAbsenceOfLinecards`)", "chk_hw_linecards")
-            if st.session_state.get("chk_hw_linecards"):
+            if st.session_state["master_test_states"].get("chk_hw_linecards"):
                 st.text_input("Serial Numbers (comma-separated)", value=st.session_state.get("param_hw_linecards_sn", "SN12345"), key="param_hw_linecards_sn")
 
             bind_cb("Verify Adverse Drops (`VerifyAdverseDrops`)", "chk_hw_drops")
             bind_cb("Verify Chassis Health (`VerifyChassisHealth`)", "chk_hw_chassis")
             
             bind_cb("Verify Environment Cooling (`VerifyEnvironmentCooling`)", "chk_hw_cooling_fans")
-            if st.session_state.get("chk_hw_cooling_fans"):
+            if st.session_state["master_test_states"].get("chk_hw_cooling_fans"):
                 st.text_input("Accepted Cooling States", value=st.session_state.get("param_hw_cooling_states", "ok"), key="param_hw_cooling_states")
 
             bind_cb("Verify Environment Power (`VerifyEnvironmentPower`)", "chk_hw_power")
@@ -422,7 +442,7 @@ with tab_catalog:
             bind_cb("Verify Temperature (`VerifyTemperature`)", "chk_hw_temp")
             
             bind_cb("Verify Transceivers Manufacturers (`VerifyTransceiversManufacturers`)", "chk_hw_trans")
-            if st.session_state.get("chk_hw_trans"):
+            if st.session_state["master_test_states"].get("chk_hw_trans"):
                 st.text_input("Expected Manufacturers (comma-separated)", value=st.session_state.get("param_hw_mfg", "Arista Networks, ARISTA"), key="param_hw_mfg")
             
             bind_cb("Verify Transceivers Temperature (`VerifyTransceiversTemperature`)", "chk_hw_trans_temp")
@@ -435,7 +455,7 @@ with tab_catalog:
             bind_cb("Verify Interface Errors (`VerifyInterfaceErrors`)", "chk_int_err")
             
             bind_cb("Verify Interface IPv4 (`VerifyInterfaceIPv4`)", "chk_int_ipv4")
-            if st.session_state.get("chk_int_ipv4"):
+            if st.session_state["master_test_states"].get("chk_int_ipv4"):
                 col1, col2 = st.columns(2)
                 with col1: st.text_input("Interface Name", value=st.session_state.get("param_int_v4_name", "Ethernet1"), key="param_int_v4_name")
                 with col2: st.text_input("Primary IPv4 CIDR", value=st.session_state.get("param_int_v4_ip", "10.0.0.1/24"), key="param_int_v4_ip")
@@ -450,13 +470,13 @@ with tab_catalog:
             bind_cb("Verify PFC Counters (`VerifyInterfacesPFCCounters`)", "chk_int_pfc")
             
             bind_cb("Verify Interfaces Speed (`VerifyInterfacesSpeed`)", "chk_int_speed")
-            if st.session_state.get("chk_int_speed"):
+            if st.session_state["master_test_states"].get("chk_int_speed"):
                 col1, col2 = st.columns(2)
                 with col1: st.text_input("Speed Intf Name", value=st.session_state.get("param_int_speed_name", "Ethernet1"), key="param_int_speed_name")
                 with col2: st.number_input("Expected Speed (Mbps)", value=st.session_state.get("param_int_speed_val", 1000), key="param_int_speed_val")
 
             bind_cb("Verify Interfaces Status (`VerifyInterfacesStatus`)", "chk_int_status")
-            if st.session_state.get("chk_int_status"):
+            if st.session_state["master_test_states"].get("chk_int_status"):
                 st.text_input("Target Interfaces (comma-separated)", value=st.session_state.get("param_target_intfs_input", "Ethernet1, Management1"), key="param_target_intfs_input")
 
             bind_cb("Verify Trident Counters (`VerifyInterfacesTridentCounters`)", "chk_int_trident")
@@ -464,11 +484,11 @@ with tab_catalog:
             bind_cb("Verify Virtual Router MAC (`VerifyIpVirtualRouterMac`)", "chk_int_vrrp_mac")
             
             bind_cb("Verify L2 MTU (`VerifyL2MTU`)", "chk_int_l2mtu")
-            if st.session_state.get("chk_int_l2mtu"):
+            if st.session_state["master_test_states"].get("chk_int_l2mtu"):
                 st.number_input("L2 MTU Value", value=st.session_state.get("param_int_l2mtu_val", 9214), key="param_int_l2mtu_val")
 
             bind_cb("Verify L3 MTU (`VerifyL3MTU`)", "chk_int_l3mtu")
-            if st.session_state.get("chk_int_l3mtu"):
+            if st.session_state["master_test_states"].get("chk_int_l3mtu"):
                 st.number_input("L3 MTU Value", value=st.session_state.get("param_int_l3mtu_val", 1500), key="param_int_l3mtu_val")
 
             bind_cb("Verify LACP Status (`VerifyLACPInterfacesStatus`)", "chk_int_lacp_status")
@@ -498,7 +518,7 @@ with tab_catalog:
             bind_cb("Verify MLAG Primary Priority (`VerifyMlagPrimaryPriority`)", "chk_mlag_priority")
             
             bind_cb("Verify MLAG Reload Delay (`VerifyMlagReloadDelay`)", "chk_mlag_reload_delay")
-            if st.session_state.get("chk_mlag_reload_delay"):
+            if st.session_state["master_test_states"].get("chk_mlag_reload_delay"):
                 col1, col2 = st.columns(2)
                 with col1: st.number_input("Reload Delay (sec)", value=st.session_state.get("param_mlag_delay", 300), key="param_mlag_delay")
                 with col2: st.number_input("Non-MLAG Delay (sec)", value=st.session_state.get("param_mlag_non_delay", 330), key="param_mlag_non_delay")
@@ -529,7 +549,7 @@ with tab_catalog:
             bind_cb("Verify BGP Peer ASN Cap (`VerifyBGPPeerASNCap`)", "chk_bgp_asn_cap")
             
             bind_cb("Verify BGP Peer Count (`VerifyBGPPeerCount`)", "chk_bgp_peer_count")
-            if st.session_state.get("chk_bgp_peer_count"):
+            if st.session_state["master_test_states"].get("chk_bgp_peer_count"):
                 col1, col2 = st.columns(2)
                 with col1: st.text_input("BGP VRF Name", value=st.session_state.get("param_bgp_cnt_vrf", "default"), key="param_bgp_cnt_vrf")
                 with col2: st.number_input("Expected Peer Count", value=st.session_state.get("param_bgp_cnt_num", 2), key="param_bgp_cnt_num")
@@ -551,7 +571,7 @@ with tab_catalog:
             bind_cb("Verify BGP Route Paths (`VerifyBGPRoutePaths`)", "chk_bgp_route_paths")
             
             bind_cb("Verify BGP Specific Peers (`VerifyBGPSpecificPeers`)", "chk_bgp_specific_peers")
-            if st.session_state.get("chk_bgp_specific_peers"):
+            if st.session_state["master_test_states"].get("chk_bgp_specific_peers"):
                 col1, col2, col3 = st.columns(3)
                 with col1: st.text_input("Neighbor Address", value=st.session_state.get("param_bgp_spec_ip", "10.0.0.2"), key="param_bgp_spec_ip")
                 with col2: st.text_input("Neighbor VRF", value=st.session_state.get("param_bgp_spec_vrf", "default"), key="param_bgp_spec_vrf")
@@ -563,13 +583,13 @@ with tab_catalog:
 
         elif selected_cat == "Routing_Generic":
             bind_cb("Verify IPv4 Route Next Hops (`VerifyIPv4RouteNextHops`)", "chk_rt_nexthops")
-            if st.session_state.get("chk_rt_nexthops"):
+            if st.session_state["master_test_states"].get("chk_rt_nexthops"):
                 col1, col2 = st.columns(2)
                 with col1: st.text_input("Target Prefix", value=st.session_state.get("param_rt_nh_prefix", "10.0.0.0/24"), key="param_rt_nh_prefix")
                 with col2: st.text_input("Expected Next Hops (comma-separated)", value=st.session_state.get("param_rt_nh_ips", "10.100.0.1"), key="param_rt_nh_ips")
 
             bind_cb("Verify IPv4 Route Presence Per Prefix (`VerifyIPv4RoutePresencePerPrefix`)", "chk_rt_presence_prefix")
-            if st.session_state.get("chk_rt_presence_prefix"):
+            if st.session_state["master_test_states"].get("chk_rt_presence_prefix"):
                 st.text_input("Prefixes to check (comma-separated)", value=st.session_state.get("param_rt_pres_prefixes", "10.0.0.0/24"), key="param_rt_pres_prefixes")
 
             bind_cb("Verify IPv4 Route Presence Per VRF (`VerifyIPv4RoutePresencePerVRF`)", "chk_rt_presence_vrf")
@@ -578,7 +598,7 @@ with tab_catalog:
             bind_cb("Verify Routing Status (`VerifyRoutingStatus`)", "chk_rt_status")
             
             bind_cb("Verify Routing Table Size (`VerifyRoutingTableSize`)", "chk_rt_size")
-            if st.session_state.get("chk_rt_size"):
+            if st.session_state["master_test_states"].get("chk_rt_size"):
                 col1, col2 = st.columns(2)
                 with col1: st.number_input("Minimum Routes", value=st.session_state.get("param_rt_sz_min", 1), key="param_rt_sz_min")
                 with col2: st.number_input("Maximum Routes", value=st.session_state.get("param_rt_sz_max", 10000), key="param_rt_sz_max")
@@ -609,7 +629,7 @@ with tab_catalog:
             bind_cb("Verify IPSec Health (`VerifyIPSecConnHealth`)", "chk_sec_ipsec_health")
             
             bind_cb("Verify IPv4 ACL (`VerifyIPv4ACL`)", "chk_sec_v4_acl")
-            if st.session_state.get("chk_sec_v4_acl"):
+            if st.session_state["master_test_states"].get("chk_sec_v4_acl"):
                 col1, col2, col3 = st.columns(3)
                 with col1: st.text_input("IPv4 Access List Name", value=st.session_state.get("param_sec_v4_acl_name", "ACL-MGMT"), key="param_sec_v4_acl_name")
                 with col2: st.number_input("Entry Sequence", value=st.session_state.get("param_sec_v4_seq", 10), key="param_sec_v4_seq")
@@ -624,11 +644,11 @@ with tab_catalog:
 
         elif selected_cat == "Services":
             bind_cb("Verify DNS Lookup (`VerifyDNSLookup`)", "chk_svc_dns_lookup")
-            if st.session_state.get("chk_svc_dns_lookup"):
+            if st.session_state["master_test_states"].get("chk_svc_dns_lookup"):
                 st.text_input("Domains to Resolve (comma-separated)", value=st.session_state.get("param_svc_dns_domains", "arista.com"), key="param_svc_dns_domains")
 
             bind_cb("Verify DNS Servers (`VerifyDNSServers`)", "chk_svc_dns_servers")
-            if st.session_state.get("chk_svc_dns_servers"):
+            if st.session_state["master_test_states"].get("chk_svc_dns_servers"):
                 col1, col2, col3 = st.columns(3)
                 with col1: st.text_input("DNS Server IPs (comma-separated)", value=st.session_state.get("param_svc_dns_ips", "8.8.8.8"), key="param_svc_dns_ips")
                 with col2: st.text_input("VRF", value=st.session_state.get("param_svc_dns_vrf", "default"), key="param_svc_dns_vrf")
@@ -637,12 +657,12 @@ with tab_catalog:
             bind_cb("Verify Errdisable Recovery (`VerifyErrdisableRecovery`)", "chk_svc_errdisable_rec")
             
             bind_cb("Verify Hostname (`VerifyHostname`)", "chk_hostname")
-            if st.session_state.get("chk_hostname"):
+            if st.session_state["master_test_states"].get("chk_hostname"):
                 st.text_input("Expected Hostname", value=st.session_state.get("param_service_hostname", "Switch-1"), key="param_service_hostname")
 
         elif selected_cat == "SNMP":
             bind_cb("Verify SNMP Contact (`VerifySnmpContact`)", "chk_snmp_contact")
-            if st.session_state.get("chk_snmp_contact"):
+            if st.session_state["master_test_states"].get("chk_snmp_contact"):
                 st.text_input("Expected Contact Email/String", value=st.session_state.get("param_snmp_contact_val", "admin@domain.com"), key="param_snmp_contact_val")
 
             bind_cb("Verify SNMP Errors (`VerifySnmpErrorCounters`)", "chk_snmp_errors")
@@ -650,19 +670,19 @@ with tab_catalog:
             bind_cb("Verify SNMP Logging (`VerifySnmpHostLogging`)", "chk_snmp_logging")
             
             bind_cb("Verify SNMP IPv4 ACL (`VerifySnmpIPv4Acl`)", "chk_snmp_v4_acl")
-            if st.session_state.get("chk_snmp_v4_acl"):
+            if st.session_state["master_test_states"].get("chk_snmp_v4_acl"):
                 col1, col2 = st.columns(2)
                 with col1: st.number_input("SNMP IPv4 ACL Number", value=st.session_state.get("param_snmp_v4_acl_num", 10), key="param_snmp_v4_acl_num")
                 with col2: st.text_input("VRF", value=st.session_state.get("param_snmp_v4_acl_vrf", "default"), key="param_snmp_v4_acl_vrf")
 
             bind_cb("Verify SNMP IPv6 ACL (`VerifySnmpIPv6Acl`)", "chk_snmp_v6_acl")
-            if st.session_state.get("chk_snmp_v6_acl"):
+            if st.session_state["master_test_states"].get("chk_snmp_v6_acl"):
                 col1, col2 = st.columns(2)
                 with col1: st.number_input("SNMP IPv6 ACL Number", value=st.session_state.get("param_snmp_v6_acl_num", 10), key="param_snmp_v6_acl_num")
                 with col2: st.text_input("VRF", value=st.session_state.get("param_snmp_v6_acl_vrf", "default"), key="param_snmp_v6_acl_vrf")
 
             bind_cb("Verify SNMP Location (`VerifySnmpLocation`)", "chk_snmp_location")
-            if st.session_state.get("chk_snmp_location"):
+            if st.session_state["master_test_states"].get("chk_snmp_location"):
                 st.text_input("Expected Location String", value=st.session_state.get("param_snmp_location_val", "DataCenter-Rack1"), key="param_snmp_location_val")
 
             bind_cb("Verify SNMP Notification (`VerifySnmpNotificationHost`)", "chk_snmp_notification")
@@ -670,7 +690,7 @@ with tab_catalog:
             bind_cb("Verify SNMP Source Intf (`VerifySnmpSourceInterface`)", "chk_snmp_source")
             
             bind_cb("Verify SNMP Status (`VerifySnmpStatus`)", "chk_snmp_status")
-            if st.session_state.get("chk_snmp_status"):
+            if st.session_state["master_test_states"].get("chk_snmp_status"):
                 st.text_input("SNMP VRF", value=st.session_state.get("param_snmp_vrf", "default"), key="param_snmp_vrf")
 
             bind_cb("Verify SNMP User (`VerifySnmpUser`)", "chk_snmp_user")
@@ -679,11 +699,11 @@ with tab_catalog:
             bind_cb("Verify EOS Extensions (`VerifyEOSExtensions`)", "chk_sw_extensions")
             
             bind_cb("Verify EOS Version (`VerifyEOSVersion`)", "chk_sw_version")
-            if st.session_state.get("chk_sw_version"):
+            if st.session_state["master_test_states"].get("chk_sw_version"):
                 st.text_input("Expected EOS Version", value=st.session_state.get("param_sw_ver", "4.30.2F"), key="param_sw_ver")
             
             bind_cb("Verify TerminAttr Version (`VerifyTerminAttrVersion`)", "chk_sw_terminattr")
-            if st.session_state.get("chk_sw_terminattr"):
+            if st.session_state["master_test_states"].get("chk_sw_terminattr"):
                 st.text_input("Expected TerminAttr Version", value=st.session_state.get("param_sw_terminattr_ver", "1.28.0"), key="param_sw_terminattr_ver")
 
         elif selected_cat == "STP":
@@ -700,7 +720,7 @@ with tab_catalog:
             bind_cb("Verify STUN Client Translation (`VerifyStunClientTranslation`)", "chk_stun_client_trans")
             
             bind_cb("Verify STUN Server (`VerifyStunServer`)", "chk_stun_status")
-            if st.session_state.get("chk_stun_status"):
+            if st.session_state["master_test_states"].get("chk_stun_status"):
                 col1, col2 = st.columns(2)
                 with col1: st.text_input("STUN Server Host/IP", value=st.session_state.get("param_stun_server", "10.0.0.1"), key="param_stun_server")
                 with col2: st.number_input("STUN Server Port", value=st.session_state.get("param_stun_port", 3478), key="param_stun_port")
@@ -710,7 +730,7 @@ with tab_catalog:
             bind_cb("Verify CPU Utilization (`VerifyCPUUtilization`)", "chk_sys_cpu")
             bind_cb("Verify Coredump (`VerifyCoredump`)", "chk_sys_coredump")
             bind_cb("Verify File Presence (`VerifyFilePresence`)", "chk_sys_file_presence")
-            if st.session_state.get("chk_sys_file_presence"):
+            if st.session_state["master_test_states"].get("chk_sys_file_presence"):
                 st.text_input("Flash Files (comma-separated)", value=st.session_state.get("param_sys_files_val", "flash:/boot-config"), key="param_sys_files_val")
 
             bind_cb("Verify File System Util (`VerifyFileSystemUtilization`)", "chk_sys_fs_util")
@@ -719,20 +739,20 @@ with tab_catalog:
             bind_cb("Verify Memory Utilization (`VerifyMemoryUtilization`)", "chk_sys_mem")
             bind_cb("Verify NTP (`VerifyNTP`)", "chk_sys_ntp")
             bind_cb("Verify NTP Associations (`VerifyNTPAssociations`)", "chk_sys_ntp_assoc")
-            if st.session_state.get("chk_sys_ntp_assoc"):
+            if st.session_state["master_test_states"].get("chk_sys_ntp_assoc"):
                 st.text_input("Expected NTP Servers (comma-separated)", value=st.session_state.get("param_sys_ntp_servers_val", "10.0.0.1"), key="param_sys_ntp_servers_val")
 
             bind_cb("Verify Reload Cause (`VerifyReloadCause`)", "chk_sys_reload")
             
             bind_cb("Verify Uptime (`VerifyUptime`)", "chk_sys_uptime")
-            if st.session_state.get("chk_sys_uptime"):
+            if st.session_state["master_test_states"].get("chk_sys_uptime"):
                 st.number_input("Min Uptime (seconds)", value=st.session_state.get("param_sys_uptime_val", 60), min_value=1, key="param_sys_uptime_val")
 
         elif selected_cat == "VLAN":
             bind_cb("Verify Dynamic VLAN Source (`VerifyDynamicVlanSource`)", "chk_vlan_dynamic")
             
             bind_cb("Verify Internal VLAN Policy (`VerifyVlanInternalPolicy`)", "chk_vlan_internal")
-            if st.session_state.get("chk_vlan_internal"):
+            if st.session_state["master_test_states"].get("chk_vlan_internal"):
                 col1, col2, col3 = st.columns(3)
                 with col1: st.selectbox("Policy", ["ascending", "descending"], key="param_vlan_policy")
                 with col2: st.number_input("Start VLAN ID", value=st.session_state.get("param_vlan_start", 1006), key="param_vlan_start")
@@ -753,7 +773,7 @@ with tab_catalog:
         if parsed_tags: body["filters"] = {"tags": parsed_tags}
         catalog_dict[module].append({test_name: body if body else None})
 
-    # Key to Module & Test Class mappings with fixed schemas
+    # Key to Module & Test Class mappings
     key_to_test_map = {
         "chk_aaa_authen": ("anta.tests.aaa", "VerifyAuthenMethods", {
             "methods": [m.strip() for m in st.session_state.get("param_aaa_authen_methods", "local").split(",") if m.strip()],
@@ -825,7 +845,12 @@ with tab_catalog:
         "chk_conn_ping": ("anta.tests.connectivity", "VerifyReachability", {"hosts": [{"destination": dest.strip()} for dest in st.session_state.get("param_conn_dest", "8.8.8.8").split(",") if dest.strip()]}),
 
         "chk_cvx_active": ("anta.tests.cvx", "VerifyActiveCVXConnections", {"connections_count": int(st.session_state.get("param_cvx_active_cnt", 1))}),
-        "chk_cvx_cluster": ("anta.tests.cvx", "VerifyCVXClusterStatus", {"peer_status": [{"peer_address": st.session_state.get("param_cvx_peer_ip", "10.0.0.1"), "status": st.session_state.get("param_cvx_peer_status", "reachable")}]}),
+        "chk_cvx_cluster": ("anta.tests.cvx", "VerifyCVXClusterStatus", {
+            "peer_status": [{
+                "peer_address": st.session_state.get("param_cvx_peer_ip", "10.0.0.1"),
+                "status": st.session_state.get("param_cvx_peer_status", "reachable")
+            }]
+        }),
         "chk_cvx_mgmt": ("anta.tests.cvx", "VerifyManagementCVX", {"enabled": bool(st.session_state.get("param_cvx_mgmt_enabled", True))}),
         "chk_cvx_client_mounts": ("anta.tests.cvx", "VerifyMcsClientMounts", None),
         "chk_cvx_server_mounts": ("anta.tests.cvx", "VerifyMcsServerMounts", {"connections_count": int(st.session_state.get("param_cvx_mcs_cnt", 1))}),
@@ -882,7 +907,7 @@ with tab_catalog:
                 "afi": "ipv4",
                 "safi": "unicast",
                 "vrf": st.session_state.get("param_bgp_spec_vrf", "default"),
-                "peers": [ip.strip() for ip in st.session_state.get("param_bgp_spec_ip", "10.0.0.2").split(",") if ip.strip()]
+                "bgp_peers": [{"peer_address": ip.strip(), "asn": int(st.session_state.get("param_bgp_spec_asn", 65000))} for ip in st.session_state.get("param_bgp_spec_ip", "10.0.0.2").split(",") if ip.strip()]
             }]
         }),
         "chk_rt_nexthops": ("anta.tests.routing.generic", "VerifyIPv4RouteNextHops", {"route_entries": [{"prefix": st.session_state.get("param_rt_nh_prefix", "10.0.0.0/24"), "nexthops": [ip.strip() for ip in st.session_state.get("param_rt_nh_ips", "10.100.0.1").split(",") if ip.strip()]}]}),
@@ -937,7 +962,7 @@ with tab_catalog:
 
     # Loop through state and dynamically append configured tests
     for k, (mod, test_cls, params) in key_to_test_map.items():
-        if st.session_state.get(k, False):
+        if st.session_state["master_test_states"].get(k, False):
             add_test(mod, test_cls, params)
 
     # --- PER-TEST PRE-VALIDATION LOGIC ---
@@ -969,7 +994,7 @@ with tab_catalog:
 
     try:
         with open("catalog.yml", "w") as f: yaml.safe_dump(valid_catalog_dict, f, sort_keys=False)
-        save_settings({"selected_test_keys": [k for k in ALL_TEST_KEYS if st.session_state.get(k, False)]})
+        save_settings({"selected_test_keys": [k for k in ALL_TEST_KEYS if st.session_state["master_test_states"].get(k, False)]})
         st.session_state["invalid_config_results"] = invalid_config_results
     except Exception as e: st.error(f"Save error: {e}")
 
