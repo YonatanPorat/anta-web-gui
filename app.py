@@ -5,6 +5,7 @@ import pandas as pd
 import yaml
 import os
 import re
+import uuid
 from anta.catalog import AntaCatalog
 
 # Configure the web page layout
@@ -112,7 +113,7 @@ DEFAULT_PROFILES = {
 
 active_profiles = saved_settings.get("profiles", DEFAULT_PROFILES)
 
-# Initialize master state dictionary
+# Initialize master state dictionary per user session
 if "master_test_states" not in st.session_state:
     st.session_state["master_test_states"] = {}
     saved_test_keys = saved_settings.get("selected_test_keys", None)
@@ -171,7 +172,6 @@ with st.sidebar:
     st.text_input("Filter Tags (comma-separated)", value=saved_settings.get("catalog_tags", ""), placeholder="e.g. leaf, demo", key="input_catalog_tags")
 
     st.markdown("---")
-    # Live Selected Tests Counter in Sidebar
     selected_count = sum(1 for k in ALL_TEST_KEYS if st.session_state["master_test_states"].get(k, False))
     st.metric("📋 Selected Tests", f"{selected_count} / {len(ALL_TEST_KEYS)}")
 
@@ -230,6 +230,18 @@ with tab_inventory:
     with sub_hosts: edited_hosts = st.data_editor(df_hosts, num_rows="dynamic", use_container_width=True, key="editor_hosts")
     with sub_networks: edited_networks = st.data_editor(df_networks, num_rows="dynamic", use_container_width=True, key="editor_networks")
     with sub_ranges: edited_ranges = st.data_editor(df_ranges, num_rows="dynamic", use_container_width=True, key="editor_ranges")
+
+    if st.button("💾 Save Default Inventory.yml", type="primary"):
+        inv_payload = {
+            "anta_inventory": {
+                "hosts": edited_hosts.dropna(how="all").to_dict("records"),
+                "networks": edited_networks.dropna(how="all").to_dict("records"),
+                "ranges": edited_ranges.dropna(how="all").to_dict("records")
+            }
+        }
+        with open("inventory.yml", "w") as f:
+            yaml.safe_dump(inv_payload, f, sort_keys=False)
+        st.success("✅ Inventory.yml saved successfully!")
 
 # ==========================================
 # TAB 3: CATALOG BUILDER (PARAMETRIZED)
@@ -763,7 +775,7 @@ with tab_catalog:
         elif selected_cat == "Custom":
             st.text_area("Custom YAML Input", value=st.session_state.get("param_custom_yaml", "# anta.tests...\n"), height=250, key="param_custom_yaml")
 
-    # Catalog Build Logic
+    # Build Catalog Dictionary for Current Session
     catalog_dict = {}
     parsed_tags = [t.strip() for t in st.session_state.get("input_catalog_tags", "").split(",") if t.strip()]
 
@@ -773,7 +785,6 @@ with tab_catalog:
         if parsed_tags: body["filters"] = {"tags": parsed_tags}
         catalog_dict[module].append({test_name: body if body else None})
 
-    # Key to Module & Test Class mappings
     key_to_test_map = {
         "chk_aaa_authen": ("anta.tests.aaa", "VerifyAuthenMethods", {
             "methods": [m.strip() for m in st.session_state.get("param_aaa_authen_methods", "local").split(",") if m.strip()],
@@ -965,7 +976,7 @@ with tab_catalog:
         if st.session_state["master_test_states"].get(k, False):
             add_test(mod, test_cls, params)
 
-    # --- PER-TEST PRE-VALIDATION LOGIC ---
+    # --- PER-TEST PRE-VALIDATION LOGIC (STORED IN SESSION_STATE) ---
     valid_catalog_dict = {}
     invalid_config_results = []
 
@@ -992,14 +1003,13 @@ with tab_catalog:
                     "messages": [full_error_text]
                 })
 
-    try:
-        with open("catalog.yml", "w") as f: yaml.safe_dump(valid_catalog_dict, f, sort_keys=False)
-        save_settings({"selected_test_keys": [k for k in ALL_TEST_KEYS if st.session_state["master_test_states"].get(k, False)]})
-        st.session_state["invalid_config_results"] = invalid_config_results
-    except Exception as e: st.error(f"Save error: {e}")
+    # Save to session_state so each user session has its own catalog dictionary
+    st.session_state["session_valid_catalog_dict"] = valid_catalog_dict
+    st.session_state["invalid_config_results"] = invalid_config_results
+    save_settings({"selected_test_keys": [k for k in ALL_TEST_KEYS if st.session_state["master_test_states"].get(k, False)]})
 
 # ==========================================
-# TAB 4: DASHBOARD (Runner)
+# TAB 4: DASHBOARD (Runner - Isolated Execution)
 # ==========================================
 with tab_dashboard:
     st.subheader("Run Network Tests")
@@ -1019,22 +1029,42 @@ with tab_dashboard:
         os.environ["ANTA_USERNAME"] = st.session_state.anta_user
         os.environ["ANTA_PASSWORD"] = st.session_state.anta_pass
         
-        with st.spinner("Connecting to switches and running tests... Please wait."):
-            cmd = ["anta", "nrfu"]
-            if run_tags_input.strip():
-                cmd.extend(["--tags", run_tags_input.strip()])
-            cmd.extend(["--inventory", "inventory.yml", "--catalog", "catalog.yml", "--ignore-status", "json"])
-            
-            result = subprocess.run(cmd, capture_output=True, text=True)
-            output = result.stdout
-            stderr_output = result.stderr or ""
-            
-            ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
-            output_clean = ansi_escape.sub('', output)
-            stderr_clean = ansi_escape.sub('', stderr_output)
-            full_log = output_clean + "\n" + stderr_clean
-            
+        # Unique UUID per execution run to ensure isolated parallel execution
+        run_id = str(uuid.uuid4())[:8]
+        run_catalog_file = f"temp_catalog_{run_id}.yml"
+        run_inventory_file = f"temp_inventory_{run_id}.yml"
+        
+        with st.spinner(f"Connecting to switches and running tests (Run ID: {run_id})... Please wait."):
             try:
+                # 1. Write unique catalog file for this execution run
+                valid_cat = st.session_state.get("session_valid_catalog_dict", {})
+                with open(run_catalog_file, "w") as f:
+                    yaml.safe_dump(valid_cat, f, sort_keys=False)
+                
+                # 2. Write unique inventory file for this execution run
+                try:
+                    with open("inventory.yml", "r") as f:
+                        inv_data = yaml.safe_load(f) or {}
+                except Exception:
+                    inv_data = {}
+                with open(run_inventory_file, "w") as f:
+                    yaml.safe_dump(inv_data, f, sort_keys=False)
+
+                # 3. Build & Execute isolated ANTA CLI command
+                cmd = ["anta", "nrfu"]
+                if run_tags_input.strip():
+                    cmd.extend(["--tags", run_tags_input.strip()])
+                cmd.extend(["--inventory", run_inventory_file, "--catalog", run_catalog_file, "--ignore-status", "json"])
+                
+                result = subprocess.run(cmd, capture_output=True, text=True)
+                output = result.stdout
+                stderr_output = result.stderr or ""
+                
+                ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
+                output_clean = ansi_escape.sub('', output)
+                stderr_clean = ansi_escape.sub('', stderr_output)
+                full_log = output_clean + "\n" + stderr_clean
+                
                 json_raw_string = output_clean
                 if "JSON results" in output_clean:
                     json_raw_string = output_clean.split("JSON results")[-1]
@@ -1134,6 +1164,14 @@ with tab_dashboard:
                 st.error(f"Error parsing results: {e}")
                 with st.expander("View Full Raw Output"):
                     st.code(full_log, language=None)
+            finally:
+                # Cleanup temporary isolated execution files
+                if os.path.exists(run_catalog_file):
+                    try: os.remove(run_catalog_file)
+                    except Exception: pass
+                if os.path.exists(run_inventory_file):
+                    try: os.remove(run_inventory_file)
+                    except Exception: pass
 
 # ==========================================
 # TAB 5: RAW CLI (Custom Commands)
