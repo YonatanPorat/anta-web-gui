@@ -112,7 +112,7 @@ DEFAULT_PROFILES = {
 
 active_profiles = saved_settings.get("profiles", DEFAULT_PROFILES)
 
-# Initialize master state dictionary to prevent Streamlit widget cleanup bugs
+# Initialize master state dictionary
 if "master_test_states" not in st.session_state:
     st.session_state["master_test_states"] = {}
     saved_test_keys = saved_settings.get("selected_test_keys", None)
@@ -171,6 +171,10 @@ with st.sidebar:
     st.text_input("Filter Tags (comma-separated)", value=saved_settings.get("catalog_tags", ""), placeholder="e.g. leaf, demo", key="input_catalog_tags")
 
     st.markdown("---")
+    # Live Selected Tests Counter in Sidebar
+    selected_count = sum(1 for k in ALL_TEST_KEYS if st.session_state["master_test_states"].get(k, False))
+    st.metric("📋 Selected Tests", f"{selected_count} / {len(ALL_TEST_KEYS)}")
+
     def toggle_select_all():
         current_all_selected = all(st.session_state["master_test_states"].get(k, False) for k in ALL_TEST_KEYS)
         new_state = not current_all_selected
@@ -928,7 +932,7 @@ with tab_catalog:
     }
 
     # Map dynamic config rules if box is ticked
-    if st.session_state.get("chk_cfg_rules") and st.session_state.get("cfg_rules_data"):
+    if st.session_state["master_test_states"].get("chk_cfg_rules") and st.session_state.get("cfg_rules_data"):
         cfg_rules_parsed = []
         rules_map = {}
         
@@ -1004,6 +1008,10 @@ with tab_catalog:
 with tab_dashboard:
     st.subheader("Run Network Tests")
     
+    # Show active execution test count indicator
+    selected_run_count = sum(1 for k in ALL_TEST_KEYS if st.session_state["master_test_states"].get(k, False))
+    st.info(f"⚡ **Ready to execute {selected_run_count} selected test(s)** on configured inventory devices.")
+
     run_tags_input = st.text_input(
         "🏷️ Filter NRFU Execution by Tags (Optional CLI Filter)", 
         placeholder="e.g. leaf, spine",
