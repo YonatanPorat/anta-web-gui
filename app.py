@@ -724,10 +724,6 @@ with tab_catalog:
             bind_cb("Verify STUN Client Translation (`VerifyStunClientTranslation`)", "chk_stun_client_trans")
             
             bind_cb("Verify STUN Server (`VerifyStunServer`)", "chk_stun_status")
-            if st.session_state["master_test_states"].get("chk_stun_status"):
-                col1, col2 = st.columns(2)
-                with col1: st.text_input("STUN Server Host/IP", value=st.session_state.get("param_stun_server", "10.0.0.1"), key="param_stun_server")
-                with col2: st.number_input("STUN Server Port", value=st.session_state.get("param_stun_port", 3478), key="param_stun_port")
 
         elif selected_cat == "System":
             bind_cb("Verify Agent Logs (`VerifyAgentLogs`)", "chk_sys_agent_logs")
@@ -927,7 +923,7 @@ with tab_catalog:
         "chk_sec_v4_acl": ("anta.tests.security", "VerifyIPv4ACL", {"ipv4_access_lists": [{"name": st.session_state.get("param_sec_v4_acl_name", "ACL-MGMT"), "entries": [{"sequence": int(st.session_state.get("param_sec_v4_seq", 10)), "action": st.session_state.get("param_sec_v4_act", "permit")}]}]}),
         "chk_svc_dns_lookup": ("anta.tests.services", "VerifyDNSLookup", {"domain_names": [d.strip() for d in st.session_state.get("param_svc_dns_domains", "arista.com").split(",") if d.strip()]}),
         "chk_svc_dns_servers": ("anta.tests.services", "VerifyDNSServers", {"dns_servers": [{"server_address": ip.strip(), "vrf": st.session_state.get("param_svc_dns_vrf", "default"), "priority": int(st.session_state.get("param_svc_dns_prio", 1))} for ip in st.session_state.get("param_svc_dns_ips", "8.8.8.8").split(",") if ip.strip()]}),
-        "chk_stun_status": ("anta.tests.stun", "VerifyStunServer", {"servers": [{"server_address": st.session_state.get("param_stun_server", "10.0.0.1"), "server_port": int(st.session_state.get("param_stun_port", 3478))}]}),
+        "chk_stun_status": ("anta.tests.stun", "VerifyStunServer", None),
         "chk_vlan_internal": ("anta.tests.vlan", "VerifyVlanInternalPolicy", {"policy": st.session_state.get("param_vlan_policy", "ascending"), "start_vlan_id": int(st.session_state.get("param_vlan_start", 1006)), "end_vlan_id": int(st.session_state.get("param_vlan_end", 4094))})
     }
 
