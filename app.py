@@ -119,7 +119,7 @@ ALL_TEST_KEYS = [
     "chk_ptp_gm", "chk_ptp_lock", "chk_ptp_mode", "chk_ptp_offset", "chk_ptp_port_mode",
     # Routing BGP
     "chk_bgp_adv_communities", "chk_bgp_exchanged_routes", "chk_bgp_nlri", "chk_bgp_asn_cap", "chk_bgp_peer_count",
-    "chk_bgp_drop_stats", "chk_bgp_peer_group", "chk_bgp_md5", "chk_bgp_mp_caps", "chk_bgp_route_limit",
+    "chk_bgp_drop_stats", "chk_bgp_peer_group", "chk_bgp_md5", "chk_bgp_mp_caps", "chk_bgp_peer_route_limit",
     "chk_bgp_refresh_cap", "chk_bgp_peer_session", "chk_bgp_peer_session_ribd", "chk_bgp_ttl", "chk_bgp_update_errors",
     "chk_bgp_health", "chk_bgp_health_ribd", "chk_bgp_redistribution", "chk_bgp_ecmp", "chk_bgp_route_paths",
     "chk_bgp_specific_peers", "chk_bgp_timers", "chk_bgp_route_maps", "chk_bgp_evpn_type2",
@@ -443,9 +443,10 @@ with tab_catalog:
 
             bind_cb("Verify CVX Cluster Status (`VerifyCVXClusterStatus`)", "chk_cvx_cluster")
             if st.session_state["master_test_states"].get("chk_cvx_cluster"):
-                col1, col2 = st.columns(2)
-                with col1: st.text_input("CVX Peer Address", value=st.session_state.get("param_cvx_peer_ip", "10.0.0.1"), key="param_cvx_peer_ip")
-                with col2: st.selectbox("CVX Peer Status", ["reachable", "joined"], key="param_cvx_peer_status")
+                col1, col2, col3 = st.columns(3)
+                with col1: st.selectbox("CVX Role", ["Master", "Standby", "Disconnected"], key="param_cvx_role")
+                with col2: st.text_input("CVX Peer Name (hostname)", value=st.session_state.get("param_cvx_peer_name", "cvx-red-2"), key="param_cvx_peer_name")
+                with col3: st.selectbox("Registration State", ["Connecting", "Connected", "Registration error", "Registration complete", "Unexpected peer state"], key="param_cvx_reg_state")
 
             bind_cb("Verify Management CVX (`VerifyManagementCVX`)", "chk_cvx_mgmt")
             if st.session_state["master_test_states"].get("chk_cvx_mgmt"):
@@ -635,10 +636,9 @@ with tab_catalog:
             
             bind_cb("Verify BGP Specific Peers (`VerifyBGPSpecificPeers`)", "chk_bgp_specific_peers")
             if st.session_state["master_test_states"].get("chk_bgp_specific_peers"):
-                col1, col2, col3 = st.columns(3)
-                with col1: st.text_input("Neighbor Address", value=st.session_state.get("param_bgp_spec_ip", "10.0.0.2"), key="param_bgp_spec_ip")
+                col1, col2 = st.columns(2)
+                with col1: st.text_input("Neighbor Address(es) (comma-separated)", value=st.session_state.get("param_bgp_spec_ip", "10.0.0.2"), key="param_bgp_spec_ip")
                 with col2: st.text_input("Neighbor VRF", value=st.session_state.get("param_bgp_spec_vrf", "default"), key="param_bgp_spec_vrf")
-                with col3: st.number_input("Expected ASN", value=st.session_state.get("param_bgp_spec_asn", 65000), key="param_bgp_spec_asn")
 
             bind_cb("Verify BGP Timers (`VerifyBGPTimers`)", "chk_bgp_timers")
             bind_cb("Verify BGP Route Maps (`VerifyBgpRouteMaps`)", "chk_bgp_route_maps")
@@ -904,9 +904,10 @@ with tab_catalog:
 
         "chk_cvx_active": ("anta.tests.cvx", "VerifyActiveCVXConnections", {"connections_count": int(st.session_state.get("param_cvx_active_cnt", 1))}),
         "chk_cvx_cluster": ("anta.tests.cvx", "VerifyCVXClusterStatus", {
+            "role": st.session_state.get("param_cvx_role", "Master"),
             "peer_status": [{
-                "peer_address": st.session_state.get("param_cvx_peer_ip", "10.0.0.1"),
-                "status": st.session_state.get("param_cvx_peer_status", "reachable")
+                "peer_name": st.session_state.get("param_cvx_peer_name", "cvx-red-2"),
+                "registration_state": st.session_state.get("param_cvx_reg_state", "Registration complete")
             }]
         }),
         "chk_cvx_mgmt": ("anta.tests.cvx", "VerifyManagementCVX", {"enabled": bool(st.session_state.get("param_cvx_mgmt_enabled", True))}),
@@ -965,7 +966,7 @@ with tab_catalog:
                 "afi": "ipv4",
                 "safi": "unicast",
                 "vrf": st.session_state.get("param_bgp_spec_vrf", "default"),
-                "bgp_peers": [{"peer_address": ip.strip(), "asn": int(st.session_state.get("param_bgp_spec_asn", 65000))} for ip in st.session_state.get("param_bgp_spec_ip", "10.0.0.2").split(",") if ip.strip()]
+                "peers": [ip.strip() for ip in st.session_state.get("param_bgp_spec_ip", "10.0.0.2").split(",") if ip.strip()]
             }]
         }),
         "chk_rt_nexthops": ("anta.tests.routing.generic", "VerifyIPv4RouteNextHops", {"route_entries": [{"prefix": st.session_state.get("param_rt_nh_prefix", "10.0.0.0/24"), "nexthops": [ip.strip() for ip in st.session_state.get("param_rt_nh_ips", "10.100.0.1").split(",") if ip.strip()]}]}),
@@ -982,7 +983,133 @@ with tab_catalog:
         "chk_svc_dns_lookup": ("anta.tests.services", "VerifyDNSLookup", {"domain_names": [d.strip() for d in st.session_state.get("param_svc_dns_domains", "arista.com").split(",") if d.strip()]}),
         "chk_svc_dns_servers": ("anta.tests.services", "VerifyDNSServers", {"dns_servers": [{"server_address": ip.strip(), "vrf": st.session_state.get("param_svc_dns_vrf", "default"), "priority": int(st.session_state.get("param_svc_dns_prio", 1))} for ip in st.session_state.get("param_svc_dns_ips", "8.8.8.8").split(",") if ip.strip()]}),
         "chk_stun_status": ("anta.tests.stun", "VerifyStunServer", None),
-        "chk_vlan_internal": ("anta.tests.vlan", "VerifyVlanInternalPolicy", {"policy": st.session_state.get("param_vlan_policy", "ascending"), "start_vlan_id": int(st.session_state.get("param_vlan_start", 1006)), "end_vlan_id": int(st.session_state.get("param_vlan_end", 4094))})
+        "chk_vlan_internal": ("anta.tests.vlan", "VerifyVlanInternalPolicy", {"policy": st.session_state.get("param_vlan_policy", "ascending"), "start_vlan_id": int(st.session_state.get("param_vlan_start", 1006)), "end_vlan_id": int(st.session_state.get("param_vlan_end", 4094))}),
+
+        # The following tests take no required inputs; their checkboxes previously had no
+        # entry here at all, so selecting them silently added nothing to the run catalog.
+        "chk_bgp_adv_communities": ("anta.tests.routing.bgp", "VerifyBGPAdvCommunities", None),
+        "chk_bgp_asn_cap": ("anta.tests.routing.bgp", "VerifyBGPPeerASNCap", None),
+        "chk_bgp_drop_stats": ("anta.tests.routing.bgp", "VerifyBGPPeerDropStats", None),
+        "chk_bgp_ecmp": ("anta.tests.routing.bgp", "VerifyBGPRouteECMP", None),
+        "chk_bgp_evpn_type2": ("anta.tests.routing.bgp", "VerifyEVPNType2Route", None),
+        "chk_bgp_exchanged_routes": ("anta.tests.routing.bgp", "VerifyBGPExchangedRoutes", None),
+        "chk_bgp_health": ("anta.tests.routing.bgp", "VerifyBGPPeersHealth", None),
+        "chk_bgp_health_ribd": ("anta.tests.routing.bgp", "VerifyBGPPeersHealthRibd", None),
+        "chk_bgp_md5": ("anta.tests.routing.bgp", "VerifyBGPPeerMD5Auth", None),
+        "chk_bgp_mp_caps": ("anta.tests.routing.bgp", "VerifyBGPPeerMPCaps", None),
+        "chk_bgp_nlri": ("anta.tests.routing.bgp", "VerifyBGPNlriAcceptance", None),
+        "chk_bgp_peer_group": ("anta.tests.routing.bgp", "VerifyBGPPeerGroup", None),
+        "chk_bgp_peer_session": ("anta.tests.routing.bgp", "VerifyBGPPeerSession", None),
+        "chk_bgp_peer_session_ribd": ("anta.tests.routing.bgp", "VerifyBGPPeerSessionRibd", None),
+        "chk_bgp_redistribution": ("anta.tests.routing.bgp", "VerifyBGPRedistribution", None),
+        "chk_bgp_refresh_cap": ("anta.tests.routing.bgp", "VerifyBGPPeerRouteRefreshCap", None),
+        "chk_bgp_route_maps": ("anta.tests.routing.bgp", "VerifyBgpRouteMaps", None),
+        "chk_bgp_route_paths": ("anta.tests.routing.bgp", "VerifyBGPRoutePaths", None),
+        "chk_bgp_timers": ("anta.tests.routing.bgp", "VerifyBGPTimers", None),
+        "chk_bgp_ttl": ("anta.tests.routing.bgp", "VerifyBGPPeerTtlMultiHops", None),
+        "chk_bgp_update_errors": ("anta.tests.routing.bgp", "VerifyBGPPeerUpdateErrors", None),
+        "chk_igmp_snooping_global": ("anta.tests.multicast", "VerifyIGMPSnoopingGlobal", None),
+        "chk_igmp_snooping_vlans": ("anta.tests.multicast", "VerifyIGMPSnoopingVlans", None),
+        "chk_int_ber": ("anta.tests.interfaces", "VerifyInterfacesBER", None),
+        "chk_int_counter_det": ("anta.tests.interfaces", "VerifyInterfacesCounterDetails", None),
+        "chk_int_disc": ("anta.tests.interfaces", "VerifyInterfaceDiscards", None),
+        "chk_int_ecn": ("anta.tests.interfaces", "VerifyInterfacesECNCounters", None),
+        "chk_int_egress_drop": ("anta.tests.interfaces", "VerifyInterfacesEgressQueueDrops", None),
+        "chk_int_err": ("anta.tests.interfaces", "VerifyInterfaceErrors", None),
+        "chk_int_err_dis": ("anta.tests.interfaces", "VerifyInterfaceErrDisabled", None),
+        "chk_int_ill_lacp": ("anta.tests.interfaces", "VerifyIllegalLACP", None),
+        "chk_int_lacp_status": ("anta.tests.interfaces", "VerifyLACPInterfacesStatus", None),
+        "chk_int_loopback": ("anta.tests.interfaces", "VerifyLoopbackCount", None),
+        "chk_int_optics_rx": ("anta.tests.interfaces", "VerifyInterfacesOpticsReceivePower", None),
+        "chk_int_optics_temp": ("anta.tests.interfaces", "VerifyInterfacesOpticsTemperature", None),
+        "chk_int_pfc": ("anta.tests.interfaces", "VerifyInterfacesPFCCounters", None),
+        "chk_int_port_channel": ("anta.tests.interfaces", "VerifyPortChannels", None),
+        "chk_int_proxy_arp": ("anta.tests.interfaces", "VerifyIPProxyARP", None),
+        "chk_int_storm": ("anta.tests.interfaces", "VerifyStormControlDrops", None),
+        "chk_int_svi": ("anta.tests.interfaces", "VerifySVI", None),
+        "chk_int_trident": ("anta.tests.interfaces", "VerifyInterfacesTridentCounters", None),
+        "chk_int_util": ("anta.tests.interfaces", "VerifyInterfaceUtilization", None),
+        "chk_int_voq": ("anta.tests.interfaces", "VerifyInterfacesVoqAndEgressQueueDrops", None),
+        "chk_int_vrrp_mac": ("anta.tests.interfaces", "VerifyIpVirtualRouterMac", None),
+        "chk_isis_graceful": ("anta.tests.routing.isis", "VerifyISISGracefulRestart", None),
+        "chk_isis_intf_mode": ("anta.tests.routing.isis", "VerifyISISInterfaceMode", None),
+        "chk_isis_neighbor_cnt": ("anta.tests.routing.isis", "VerifyISISNeighborCount", None),
+        "chk_isis_neighbor_state": ("anta.tests.routing.isis", "VerifyISISNeighborState", None),
+        "chk_isis_sr_adj": ("anta.tests.routing.isis", "VerifyISISSegmentRoutingAdjacencySegments", None),
+        "chk_isis_sr_dataplane": ("anta.tests.routing.isis", "VerifyISISSegmentRoutingDataplane", None),
+        "chk_isis_sr_tunnels": ("anta.tests.routing.isis", "VerifyISISSegmentRoutingTunnels", None),
+        "chk_lanz": ("anta.tests.lanz", "VerifyLANZ", None),
+        "chk_log_accounting": ("anta.tests.logging", "VerifyLoggingAccounting", None),
+        "chk_log_entries": ("anta.tests.logging", "VerifyLoggingEntries", None),
+        "chk_log_errors": ("anta.tests.logging", "VerifyLoggingErrors", None),
+        "chk_log_generation": ("anta.tests.logging", "VerifyLoggingLogsGeneration", None),
+        "chk_log_hostname": ("anta.tests.logging", "VerifyLoggingHostname", None),
+        "chk_log_hosts": ("anta.tests.logging", "VerifyLoggingHosts", None),
+        "chk_log_persistent": ("anta.tests.logging", "VerifyLoggingPersistent", None),
+        "chk_log_source_intf": ("anta.tests.logging", "VerifyLoggingSourceIntf", None),
+        "chk_log_syslog": ("anta.tests.logging", "VerifySyslogLogging", None),
+        "chk_log_timestamp": ("anta.tests.logging", "VerifyLoggingTimestamp", None),
+        "chk_mlag_config_sanity": ("anta.tests.mlag", "VerifyMlagConfigSanity", None),
+        "chk_mlag_dual_primary": ("anta.tests.mlag", "VerifyMlagDualPrimary", None),
+        "chk_mlag_interfaces": ("anta.tests.mlag", "VerifyMlagInterfaces", None),
+        "chk_mlag_priority": ("anta.tests.mlag", "VerifyMlagPrimaryPriority", None),
+        "chk_mlag_status": ("anta.tests.mlag", "VerifyMlagStatus", None),
+        "chk_ospf_max_lsa": ("anta.tests.routing.ospf", "VerifyOSPFMaxLSA", None),
+        "chk_ospf_neighbor_cnt": ("anta.tests.routing.ospf", "VerifyOSPFNeighborCount", None),
+        "chk_ospf_neighbor_state": ("anta.tests.routing.ospf", "VerifyOSPFNeighborState", None),
+        "chk_ospf_specific_neighbors": ("anta.tests.routing.ospf", "VerifyOSPFSpecificNeighbors", None),
+        "chk_path_sel_health": ("anta.tests.path_selection", "VerifyPathsHealth", None),
+        "chk_path_sel_specific": ("anta.tests.path_selection", "VerifySpecificPath", None),
+        "chk_ptp_gm": ("anta.tests.ptp", "VerifyPtpGMStatus", None),
+        "chk_ptp_lock": ("anta.tests.ptp", "VerifyPtpLockStatus", None),
+        "chk_ptp_mode": ("anta.tests.ptp", "VerifyPtpModeStatus", None),
+        "chk_ptp_offset": ("anta.tests.ptp", "VerifyPtpOffset", None),
+        "chk_ptp_port_mode": ("anta.tests.ptp", "VerifyPtpPortModeStatus", None),
+        "chk_rt_model": ("anta.tests.routing.generic", "VerifyRoutingProtocolModel", None),
+        "chk_rt_presence_vrf": ("anta.tests.routing.generic", "VerifyIPv4RoutePresencePerVRF", None),
+        "chk_rt_route_type": ("anta.tests.routing.generic", "VerifyIPv4RouteType", None),
+        "chk_rt_status": ("anta.tests.routing.generic", "VerifyRoutingStatus", None),
+        "chk_sec_api_http": ("anta.tests.security", "VerifyAPIHttpStatus", None),
+        "chk_sec_api_https_ssl": ("anta.tests.security", "VerifyAPIHttpsSSL", None),
+        "chk_sec_api_v4_acl": ("anta.tests.security", "VerifyAPIIPv4Acl", None),
+        "chk_sec_api_v6_acl": ("anta.tests.security", "VerifyAPIIPv6Acl", None),
+        "chk_sec_banner_login": ("anta.tests.security", "VerifyBannerLogin", None),
+        "chk_sec_banner_motd": ("anta.tests.security", "VerifyBannerMotd", None),
+        "chk_sec_entropy": ("anta.tests.security", "VerifyHardwareEntropy", None),
+        "chk_sec_fips": ("anta.tests.security", "VerifySSHFIPSRestrictions", None),
+        "chk_sec_ipsec_health": ("anta.tests.security", "VerifyIPSecConnHealth", None),
+        "chk_sec_ipsec_specific": ("anta.tests.security", "VerifySpecificIPSecConn", None),
+        "chk_sec_ssh_v4_acl": ("anta.tests.security", "VerifySSHIPv4Acl", None),
+        "chk_sec_ssh_v6_acl": ("anta.tests.security", "VerifySSHIPv6Acl", None),
+        "chk_sec_ssl_cert": ("anta.tests.security", "VerifyAPISSLCertificate", None),
+        "chk_sec_telnet": ("anta.tests.security", "VerifyTelnetStatus", None),
+        "chk_snmp_errors": ("anta.tests.snmp", "VerifySnmpErrorCounters", None),
+        "chk_snmp_group": ("anta.tests.snmp", "VerifySnmpGroup", None),
+        "chk_snmp_logging": ("anta.tests.snmp", "VerifySnmpHostLogging", None),
+        "chk_snmp_notification": ("anta.tests.snmp", "VerifySnmpNotificationHost", None),
+        "chk_snmp_pdu": ("anta.tests.snmp", "VerifySnmpPDUCounters", None),
+        "chk_snmp_source": ("anta.tests.snmp", "VerifySnmpSourceInterface", None),
+        "chk_snmp_user": ("anta.tests.snmp", "VerifySnmpUser", None),
+        "chk_ssh_status": ("anta.tests.security", "VerifySSHStatus", None),
+        "chk_stp_blocked": ("anta.tests.stp", "VerifySTPBlockedPorts", None),
+        "chk_stp_counters": ("anta.tests.stp", "VerifySTPCounters", None),
+        "chk_stp_disabled_vlans": ("anta.tests.stp", "VerifySTPDisabledVlans", None),
+        "chk_stp_forwarding": ("anta.tests.stp", "VerifySTPForwardingPorts", None),
+        "chk_stp_mode": ("anta.tests.stp", "VerifySTPMode", None),
+        "chk_stp_root_priority": ("anta.tests.stp", "VerifySTPRootPriority", None),
+        "chk_stp_tc": ("anta.tests.stp", "VerifyStpTopologyChanges", None),
+        "chk_stun_client": ("anta.tests.stun", "VerifyStunClient", None),
+        "chk_stun_client_trans": ("anta.tests.stun", "VerifyStunClientTranslation", None),
+        "chk_svc_errdisable_rec": ("anta.tests.services", "VerifyErrdisableRecovery", None),
+        "chk_tcam_profile": ("anta.tests.profiles", "VerifyTcamProfile", None),
+        "chk_uft_mode": ("anta.tests.profiles", "VerifyUnifiedForwardingTableMode", None),
+        "chk_vlan_dynamic": ("anta.tests.vlan", "VerifyDynamicVlanSource", None),
+        "chk_vxlan_conn": ("anta.tests.vxlan", "VerifyVxlan1ConnSettings", None),
+        "chk_vxlan_intf": ("anta.tests.vxlan", "VerifyVxlan1Interface", None),
+        "chk_vxlan_sanity": ("anta.tests.vxlan", "VerifyVxlanConfigSanity", None),
+        "chk_vxlan_vni_binding": ("anta.tests.vxlan", "VerifyVxlanVniBinding", None),
+        "chk_vxlan_vtep": ("anta.tests.vxlan", "VerifyVxlanVtep", None),
+        "chk_vxlan_vvtep": ("anta.tests.vxlan", "VerifyVxlan1VVTEPIPAddresses", None),
     }
 
     # Map dynamic config rules if box is ticked
