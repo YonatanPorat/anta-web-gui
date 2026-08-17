@@ -63,7 +63,7 @@ This project enables network engineers to design, build, and execute Network Rea
 
 1. **Clone the repository:**
 ```bash
-git clone https://github.com/YOUR_USERNAME/anta-web-gui.git
+git clone https://github.com/YonatanPorat/anta-web-gui.git
 cd anta-web-gui
 
 ```
