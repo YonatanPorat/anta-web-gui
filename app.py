@@ -1469,11 +1469,12 @@ with tab_dashboard:
                     skipped = len(df[df['result'] == 'skipped']) if 'result' in df.columns else 0
                     
                     st.subheader("📊 Test Summary")
-                    col1, col2, col3, col4 = st.columns(4)
+                    col1, col2, col3, col4, col5 = st.columns(5)
                     col1.metric("Total Tests", total_tests)
                     col2.metric("✅ Passed", passed)
                     col3.metric("❌ Failed", failed)
                     col4.metric("🚨 Error / Exception", error)
+                    col5.metric("⏭️ Skipped", skipped)
                     
                     st.divider()
                     display_cols = ['name', 'categories', 'description', 'result', 'messages']
