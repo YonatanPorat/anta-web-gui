@@ -724,6 +724,8 @@ with tab_catalog:
                 render_list_editor("Address Families", "param_bgp_health_afs", [{'afi': 'ipv4', 'safi': 'unicast', 'vrf': 'default'}])
             bind_cb("Verify BGP Peers Health RIBD (`VerifyBGPPeersHealthRibd`)", "chk_bgp_health_ribd")
             bind_cb("Verify BGP Redistribution (`VerifyBGPRedistribution`)", "chk_bgp_redistribution")
+            if st.session_state["master_test_states"].get("chk_bgp_redistribution"):
+                render_list_editor("VRFs (one row = one VRF/AFI-SAFI/protocol combination)", "param_bgp_redist_vrfs", [{'vrf': 'default', 'afi_safi': 'ipv4multicast', 'proto': 'Connected', 'include_leaked': True, 'route_map': 'RM-CONN-2-BGP'}])
             bind_cb("Verify BGP Route ECMP (`VerifyBGPRouteECMP`)", "chk_bgp_ecmp")
             if st.session_state["master_test_states"].get("chk_bgp_ecmp"):
                 render_list_editor("BGP Routes", "param_bgp_ecmp_routes", [{'prefix': '10.0.0.0/24', 'vrf': 'default', 'ecmp_count': 2}])
@@ -1179,7 +1181,10 @@ with tab_catalog:
         "chk_bgp_peer_group": ("anta.tests.routing.bgp", "VerifyBGPPeerGroup", {"bgp_peers": st.session_state.get("data_param_bgp_peergroup_peers", [{'peer_address': '10.0.0.2', 'vrf': 'default', 'peer_group': 'PG-SPINE'}])}),
         "chk_bgp_peer_session": ("anta.tests.routing.bgp", "VerifyBGPPeerSession", {"bgp_peers": st.session_state.get("data_param_bgp_session_peers", [{'peer_address': '10.0.0.2', 'vrf': 'default'}])}),
         "chk_bgp_peer_session_ribd": ("anta.tests.routing.bgp", "VerifyBGPPeerSessionRibd", {"bgp_peers": st.session_state.get("data_param_bgp_session_ribd_peers", [{'peer_address': '10.0.0.2', 'vrf': 'default'}])}),
-        "chk_bgp_redistribution": ("anta.tests.routing.bgp", "VerifyBGPRedistribution", None),
+        "chk_bgp_redistribution": ("anta.tests.routing.bgp", "VerifyBGPRedistribution", {"vrfs": [
+            {"vrf": r["vrf"], "address_families": [{"afi_safi": r["afi_safi"], "redistributed_routes": [{"proto": r["proto"], "include_leaked": bool(r.get("include_leaked", False)), "route_map": r.get("route_map") or None}]}]}
+            for r in st.session_state.get("data_param_bgp_redist_vrfs", [{'vrf': 'default', 'afi_safi': 'ipv4multicast', 'proto': 'Connected', 'include_leaked': True, 'route_map': 'RM-CONN-2-BGP'}])
+        ]}),
         "chk_bgp_refresh_cap": ("anta.tests.routing.bgp", "VerifyBGPPeerRouteRefreshCap", {"bgp_peers": st.session_state.get("data_param_bgp_refresh_peers", [{'peer_address': '10.0.0.2', 'vrf': 'default'}])}),
         "chk_bgp_route_maps": ("anta.tests.routing.bgp", "VerifyBgpRouteMaps", {"bgp_peers": st.session_state.get("data_param_bgp_routemaps_peers", [{'peer_address': '10.0.0.2', 'vrf': 'default', 'inbound_route_map': 'RM-IN', 'outbound_route_map': 'RM-OUT'}])}),
         "chk_bgp_route_paths": ("anta.tests.routing.bgp", "VerifyBGPRoutePaths", {"route_entries": [
