@@ -119,7 +119,7 @@ ALL_TEST_KEYS = [
     "chk_ptp_gm", "chk_ptp_lock", "chk_ptp_mode", "chk_ptp_offset", "chk_ptp_port_mode",
     # Routing BGP
     "chk_bgp_adv_communities", "chk_bgp_exchanged_routes", "chk_bgp_nlri", "chk_bgp_asn_cap", "chk_bgp_peer_count",
-    "chk_bgp_drop_stats", "chk_bgp_peer_group", "chk_bgp_md5", "chk_bgp_mp_caps", "chk_bgp_route_limit",
+    "chk_bgp_drop_stats", "chk_bgp_peer_group", "chk_bgp_md5", "chk_bgp_mp_caps", "chk_bgp_peer_route_limit",
     "chk_bgp_refresh_cap", "chk_bgp_peer_session", "chk_bgp_peer_session_ribd", "chk_bgp_ttl", "chk_bgp_update_errors",
     "chk_bgp_health", "chk_bgp_health_ribd", "chk_bgp_redistribution", "chk_bgp_ecmp", "chk_bgp_route_paths",
     "chk_bgp_specific_peers", "chk_bgp_timers", "chk_bgp_route_maps", "chk_bgp_evpn_type2",
@@ -322,6 +322,24 @@ with tab_catalog:
                 args=(key,)
             )
 
+        def render_list_editor(label, param_key, default_rows):
+            data_key = f"data_{param_key}"
+            if data_key not in st.session_state:
+                st.session_state[data_key] = default_rows
+            st.caption(label)
+            edited = st.data_editor(pd.DataFrame(st.session_state[data_key]), num_rows="dynamic", use_container_width=True, key=f"editor_{param_key}")
+            st.session_state[data_key] = edited.to_dict("records")
+            return st.session_state[data_key]
+
+        def expand_csv_fields(rows, fields):
+            out = []
+            for r in rows:
+                nr = dict(r)
+                for f in fields:
+                    nr[f] = [v.strip() for v in str(r.get(f, "")).split(",") if v.strip()]
+                out.append(nr)
+            return out
+
         if selected_cat == "AAA":
             bind_cb("Verify Authentication Methods (`VerifyAuthenMethods`)", "chk_aaa_authen")
             if st.session_state["master_test_states"].get("chk_aaa_authen"):
@@ -443,9 +461,10 @@ with tab_catalog:
 
             bind_cb("Verify CVX Cluster Status (`VerifyCVXClusterStatus`)", "chk_cvx_cluster")
             if st.session_state["master_test_states"].get("chk_cvx_cluster"):
-                col1, col2 = st.columns(2)
-                with col1: st.text_input("CVX Peer Address", value=st.session_state.get("param_cvx_peer_ip", "10.0.0.1"), key="param_cvx_peer_ip")
-                with col2: st.selectbox("CVX Peer Status", ["reachable", "joined"], key="param_cvx_peer_status")
+                col1, col2, col3 = st.columns(3)
+                with col1: st.selectbox("CVX Role", ["Master", "Standby", "Disconnected"], key="param_cvx_role")
+                with col2: st.text_input("CVX Peer Name (hostname)", value=st.session_state.get("param_cvx_peer_name", "cvx-red-2"), key="param_cvx_peer_name")
+                with col3: st.selectbox("Registration State", ["Connecting", "Connected", "Registration error", "Registration complete", "Unexpected peer state"], key="param_cvx_reg_state")
 
             bind_cb("Verify Management CVX (`VerifyManagementCVX`)", "chk_cvx_mgmt")
             if st.session_state["master_test_states"].get("chk_cvx_mgmt"):
@@ -465,11 +484,21 @@ with tab_catalog:
                 with col2: st.number_input("EVPN VNI", value=st.session_state.get("param_evpn_vni", 10010), key="param_evpn_vni")
                 
             bind_cb("Verify VXLAN Conn Settings (`VerifyVxlan1ConnSettings`)", "chk_vxlan_conn")
+            if st.session_state["master_test_states"].get("chk_vxlan_conn"):
+                st.text_input("VXLAN Source Interface", value=st.session_state.get("param_vxlan_src_intf", "Loopback1"), key="param_vxlan_src_intf")
+                st.number_input("VXLAN UDP Port", value=st.session_state.get("param_vxlan_udp_port", 4789), key="param_vxlan_udp_port")
             bind_cb("Verify VXLAN Interface (`VerifyVxlan1Interface`)", "chk_vxlan_intf")
             bind_cb("Verify VXLAN VVTEP IPs (`VerifyVxlan1VVTEPIPAddresses`)", "chk_vxlan_vvtep")
+            if st.session_state["master_test_states"].get("chk_vxlan_vvtep"):
+                st.text_input("VVTEP IPv4 Address", value=st.session_state.get("param_vxlan_vvtep_v4", "10.255.1.1"), key="param_vxlan_vvtep_v4")
+                st.text_input("VVTEP IPv6 Address (optional)", value=st.session_state.get("param_vxlan_vvtep_v6", ""), key="param_vxlan_vvtep_v6")
             bind_cb("Verify VXLAN Config Sanity (`VerifyVxlanConfigSanity`)", "chk_vxlan_sanity")
             bind_cb("Verify VXLAN VNI Binding (`VerifyVxlanVniBinding`)", "chk_vxlan_vni_binding")
+            if st.session_state["master_test_states"].get("chk_vxlan_vni_binding"):
+                render_list_editor("VNI Bindings (VNI -> VLAN/VRF)", "param_vxlan_vni_bindings", [{'vni': 10010, 'binding': '10'}])
             bind_cb("Verify VXLAN VTEP (`VerifyVxlanVtep`)", "chk_vxlan_vtep")
+            if st.session_state["master_test_states"].get("chk_vxlan_vtep"):
+                st.text_input("Expected VTEP Peer IPs (comma-separated)", value=st.session_state.get("param_vxlan_vteps", "10.1.1.1"), key="param_vxlan_vteps")
 
         elif selected_cat == "FieldNotices":
             bind_cb("Verify Field Notice 44 Resolution (`VerifyFieldNotice44Resolution`)", "chk_fn_fn44")
@@ -512,6 +541,8 @@ with tab_catalog:
 
         elif selected_cat == "Interfaces":
             bind_cb("Verify Proxy ARP (`VerifyIPProxyARP`)", "chk_int_proxy_arp")
+            if st.session_state["master_test_states"].get("chk_int_proxy_arp"):
+                st.text_input("Interfaces (comma-separated)", value=st.session_state.get("param_int_proxy_arp_ifaces", "Ethernet1"), key="param_int_proxy_arp_ifaces")
             bind_cb("Verify Illegal LACP (`VerifyIllegalLACP`)", "chk_int_ill_lacp")
             bind_cb("Verify Interface Discards (`VerifyInterfaceDiscards`)", "chk_int_disc")
             bind_cb("Verify Interface ErrDisabled (`VerifyInterfaceErrDisabled`)", "chk_int_err_dis")
@@ -545,6 +576,8 @@ with tab_catalog:
             bind_cb("Verify Trident Counters (`VerifyInterfacesTridentCounters`)", "chk_int_trident")
             bind_cb("Verify VoQ Drops (`VerifyInterfacesVoqAndEgressQueueDrops`)", "chk_int_voq")
             bind_cb("Verify Virtual Router MAC (`VerifyIpVirtualRouterMac`)", "chk_int_vrrp_mac")
+            if st.session_state["master_test_states"].get("chk_int_vrrp_mac"):
+                st.text_input("Virtual Router MAC Address", value=st.session_state.get("param_int_vrrp_mac", "00:1c:73:00:dc:01"), key="param_int_vrrp_mac")
             
             bind_cb("Verify L2 MTU (`VerifyL2MTU`)", "chk_int_l2mtu")
             if st.session_state["master_test_states"].get("chk_int_l2mtu"):
@@ -555,7 +588,11 @@ with tab_catalog:
                 st.number_input("L3 MTU Value", value=st.session_state.get("param_int_l3mtu_val", 1500), key="param_int_l3mtu_val")
 
             bind_cb("Verify LACP Status (`VerifyLACPInterfacesStatus`)", "chk_int_lacp_status")
+            if st.session_state["master_test_states"].get("chk_int_lacp_status"):
+                render_list_editor("LACP Interfaces", "param_int_lacp_ifaces", [{'name': 'Ethernet1', 'portchannel': 'Port-Channel100'}])
             bind_cb("Verify Loopback Count (`VerifyLoopbackCount`)", "chk_int_loopback")
+            if st.session_state["master_test_states"].get("chk_int_loopback"):
+                st.number_input("Expected Loopback Count", value=st.session_state.get("param_int_loopback_num", 1), key="param_int_loopback_num")
             bind_cb("Verify Port Channels (`VerifyPortChannels`)", "chk_int_port_channel")
             bind_cb("Verify SVI (`VerifySVI`)", "chk_int_svi")
             bind_cb("Verify Storm Control Drops (`VerifyStormControlDrops`)", "chk_int_storm")
@@ -565,20 +602,35 @@ with tab_catalog:
             st.divider()
             bind_cb("Verify Logging Accounting (`VerifyLoggingAccounting`)", "chk_log_accounting")
             bind_cb("Verify Logging Entries (`VerifyLoggingEntries`)", "chk_log_entries")
+            if st.session_state["master_test_states"].get("chk_log_entries"):
+                render_list_editor("Logging Entries", "param_log_entries", [{'regex_match': '.*ACCOUNTING-5-EXEC.*', 'severity_level': 'informational', 'last_number_messages': 10}])
             bind_cb("Verify Logging Errors (`VerifyLoggingErrors`)", "chk_log_errors")
             bind_cb("Verify Logging Hostname (`VerifyLoggingHostname`)", "chk_log_hostname")
             bind_cb("Verify Logging Hosts (`VerifyLoggingHosts`)", "chk_log_hosts")
+            if st.session_state["master_test_states"].get("chk_log_hosts"):
+                st.text_input("Syslog Server IPs (comma-separated)", value=st.session_state.get("param_log_hosts_list", "10.0.0.1"), key="param_log_hosts_list")
+                st.text_input("VRF", value=st.session_state.get("param_log_hosts_vrf", "default"), key="param_log_hosts_vrf")
             bind_cb("Verify Logs Generation (`VerifyLoggingLogsGeneration`)", "chk_log_generation")
             bind_cb("Verify Persistent Logging (`VerifyLoggingPersistent`)", "chk_log_persistent")
             bind_cb("Verify Source Interface (`VerifyLoggingSourceIntf`)", "chk_log_source_intf")
+            if st.session_state["master_test_states"].get("chk_log_source_intf"):
+                st.text_input("Source Interface", value=st.session_state.get("param_log_src_intf", "Management1"), key="param_log_src_intf")
+                st.text_input("VRF", value=st.session_state.get("param_log_src_intf_vrf", "default"), key="param_log_src_intf_vrf")
             bind_cb("Verify Logging Timestamp (`VerifyLoggingTimestamp`)", "chk_log_timestamp")
             bind_cb("Verify Syslog Logging (`VerifySyslogLogging`)", "chk_log_syslog")
 
         elif selected_cat == "MLAG_Multicast":
             bind_cb("Verify MLAG Config Sanity (`VerifyMlagConfigSanity`)", "chk_mlag_config_sanity")
             bind_cb("Verify MLAG Dual Primary (`VerifyMlagDualPrimary`)", "chk_mlag_dual_primary")
+            if st.session_state["master_test_states"].get("chk_mlag_dual_primary"):
+                st.number_input("Detection Delay (sec)", value=st.session_state.get("param_mlag_dp_delay", 200), key="param_mlag_dp_delay")
+                st.checkbox("Errdisable Interfaces on Detection", value=st.session_state.get("param_mlag_dp_errdisabled", False), key="param_mlag_dp_errdisabled")
+                st.number_input("Recovery Delay (sec)", value=st.session_state.get("param_mlag_dp_recovery", 60), key="param_mlag_dp_recovery")
+                st.number_input("Recovery Delay Non-MLAG (sec)", value=st.session_state.get("param_mlag_dp_recovery_non", 60), key="param_mlag_dp_recovery_non")
             bind_cb("Verify MLAG Interfaces (`VerifyMlagInterfaces`)", "chk_mlag_interfaces")
             bind_cb("Verify MLAG Primary Priority (`VerifyMlagPrimaryPriority`)", "chk_mlag_priority")
+            if st.session_state["master_test_states"].get("chk_mlag_priority"):
+                st.number_input("Expected Primary Priority", value=st.session_state.get("param_mlag_primary_prio", 32760), key="param_mlag_primary_prio")
             
             bind_cb("Verify MLAG Reload Delay (`VerifyMlagReloadDelay`)", "chk_mlag_reload_delay")
             if st.session_state["master_test_states"].get("chk_mlag_reload_delay"):
@@ -589,17 +641,29 @@ with tab_catalog:
             bind_cb("Verify MLAG Status (`VerifyMlagStatus`)", "chk_mlag_status")
             st.divider()
             bind_cb("Verify IGMP Snooping Global (`VerifyIGMPSnoopingGlobal`)", "chk_igmp_snooping_global")
+            if st.session_state["master_test_states"].get("chk_igmp_snooping_global"):
+                st.checkbox("IGMP Snooping Enabled", value=st.session_state.get("param_igmp_global_enabled", True), key="param_igmp_global_enabled")
             bind_cb("Verify IGMP Snooping VLANs (`VerifyIGMPSnoopingVlans`)", "chk_igmp_snooping_vlans")
+            if st.session_state["master_test_states"].get("chk_igmp_snooping_vlans"):
+                render_list_editor("IGMP Snooping VLANs", "param_igmp_vlans", [{'vlan_id': 10, 'enabled': True}])
 
         elif selected_cat == "Path_Profiles":
             bind_cb("Verify Paths Health (`VerifyPathsHealth`)", "chk_path_sel_health")
             bind_cb("Verify Specific Path (`VerifySpecificPath`)", "chk_path_sel_specific")
+            if st.session_state["master_test_states"].get("chk_path_sel_specific"):
+                render_list_editor("DPS Paths", "param_path_sel_paths", [{'peer': '10.255.0.1', 'path_group': 'internet', 'source_address': '100.64.3.2', 'destination_address': '100.64.1.2'}])
             st.divider()
             bind_cb("Verify TCAM Profile (`VerifyTcamProfile`)", "chk_tcam_profile")
+            if st.session_state["master_test_states"].get("chk_tcam_profile"):
+                st.text_input("Expected TCAM Profile", value=st.session_state.get("param_tcam_profile", "default"), key="param_tcam_profile")
             bind_cb("Verify Unified Forwarding Table Mode (`VerifyUnifiedForwardingTableMode`)", "chk_uft_mode")
+            if st.session_state["master_test_states"].get("chk_uft_mode"):
+                st.text_input("Expected UFT Mode (0-4 or flexible)", value=st.session_state.get("param_uft_mode", "flexible"), key="param_uft_mode")
 
         elif selected_cat == "PTP":
             bind_cb("Verify PTP Grandmaster (`VerifyPtpGMStatus`)", "chk_ptp_gm")
+            if st.session_state["master_test_states"].get("chk_ptp_gm"):
+                st.text_input("Expected Grandmaster ID", value=st.session_state.get("param_ptp_gmid", "0xEC:46:70:FF:FE:00:00:00"), key="param_ptp_gmid")
             bind_cb("Verify PTP Lock Status (`VerifyPtpLockStatus`)", "chk_ptp_lock")
             bind_cb("Verify PTP Mode Status (`VerifyPtpModeStatus`)", "chk_ptp_mode")
             bind_cb("Verify PTP Offset (`VerifyPtpOffset`)", "chk_ptp_offset")
@@ -607,9 +671,17 @@ with tab_catalog:
 
         elif selected_cat == "BGP":
             bind_cb("Verify BGP Adv Communities (`VerifyBGPAdvCommunities`)", "chk_bgp_adv_communities")
+            if st.session_state["master_test_states"].get("chk_bgp_adv_communities"):
+                render_list_editor("BGP Peers", "param_bgp_advcomm_peers", [{'peer_address': '10.0.0.2', 'vrf': 'default'}])
             bind_cb("Verify BGP Exchanged Routes (`VerifyBGPExchangedRoutes`)", "chk_bgp_exchanged_routes")
+            if st.session_state["master_test_states"].get("chk_bgp_exchanged_routes"):
+                render_list_editor("BGP Peers (routes as CIDR, comma-separated within cell)", "param_bgp_exch_peers", [{'peer_address': '10.0.0.2', 'vrf': 'default', 'advertised_routes': '10.0.0.0/24', 'received_routes': '10.0.1.0/24'}])
             bind_cb("Verify BGP NLRI Acceptance (`VerifyBGPNlriAcceptance`)", "chk_bgp_nlri")
+            if st.session_state["master_test_states"].get("chk_bgp_nlri"):
+                render_list_editor("BGP Peers (capabilities comma-separated within cell)", "param_bgp_nlri_peers", [{'peer_address': '10.0.0.2', 'vrf': 'default', 'capabilities': 'ipv4Unicast'}])
             bind_cb("Verify BGP Peer ASN Cap (`VerifyBGPPeerASNCap`)", "chk_bgp_asn_cap")
+            if st.session_state["master_test_states"].get("chk_bgp_asn_cap"):
+                render_list_editor("BGP Peers", "param_bgp_asncap_peers", [{'peer_address': '10.0.0.2', 'vrf': 'default'}])
             
             bind_cb("Verify BGP Peer Count (`VerifyBGPPeerCount`)", "chk_bgp_peer_count")
             if st.session_state["master_test_states"].get("chk_bgp_peer_count"):
@@ -618,31 +690,62 @@ with tab_catalog:
                 with col2: st.number_input("Expected Peer Count", value=st.session_state.get("param_bgp_cnt_num", 2), key="param_bgp_cnt_num")
 
             bind_cb("Verify BGP Peer Drop Stats (`VerifyBGPPeerDropStats`)", "chk_bgp_drop_stats")
+            if st.session_state["master_test_states"].get("chk_bgp_drop_stats"):
+                render_list_editor("BGP Peers", "param_bgp_dropstats_peers", [{'peer_address': '10.0.0.2', 'vrf': 'default'}])
             bind_cb("Verify BGP Peer Group (`VerifyBGPPeerGroup`)", "chk_bgp_peer_group")
+            if st.session_state["master_test_states"].get("chk_bgp_peer_group"):
+                render_list_editor("BGP Peers", "param_bgp_peergroup_peers", [{'peer_address': '10.0.0.2', 'vrf': 'default', 'peer_group': 'PG-SPINE'}])
             bind_cb("Verify BGP Peer MD5 Auth (`VerifyBGPPeerMD5Auth`)", "chk_bgp_md5")
+            if st.session_state["master_test_states"].get("chk_bgp_md5"):
+                render_list_editor("BGP Peers", "param_bgp_md5_peers", [{'peer_address': '10.0.0.2', 'vrf': 'default'}])
             bind_cb("Verify BGP Peer MP Caps (`VerifyBGPPeerMPCaps`)", "chk_bgp_mp_caps")
+            if st.session_state["master_test_states"].get("chk_bgp_mp_caps"):
+                render_list_editor("BGP Peers (capabilities comma-separated within cell)", "param_bgp_mpcaps_peers", [{'peer_address': '10.0.0.2', 'vrf': 'default', 'capabilities': 'ipv4Unicast'}])
             bind_cb("Verify BGP Peer Route Limit (`VerifyBGPPeerRouteLimit`)", "chk_bgp_peer_route_limit")
+            if st.session_state["master_test_states"].get("chk_bgp_peer_route_limit"):
+                render_list_editor("BGP Peers", "param_bgp_routelimit_peers", [{'peer_address': '10.0.0.2', 'vrf': 'default', 'maximum_routes': 12000, 'warning_limit': 10000}])
             bind_cb("Verify BGP Peer Refresh Cap (`VerifyBGPPeerRouteRefreshCap`)", "chk_bgp_refresh_cap")
+            if st.session_state["master_test_states"].get("chk_bgp_refresh_cap"):
+                render_list_editor("BGP Peers", "param_bgp_refresh_peers", [{'peer_address': '10.0.0.2', 'vrf': 'default'}])
             bind_cb("Verify BGP Peer Session (`VerifyBGPPeerSession`)", "chk_bgp_peer_session")
+            if st.session_state["master_test_states"].get("chk_bgp_peer_session"):
+                render_list_editor("BGP Peers", "param_bgp_session_peers", [{'peer_address': '10.0.0.2', 'vrf': 'default'}])
             bind_cb("Verify BGP Peer Session RIBD (`VerifyBGPPeerSessionRibd`)", "chk_bgp_peer_session_ribd")
+            if st.session_state["master_test_states"].get("chk_bgp_peer_session_ribd"):
+                render_list_editor("BGP Peers", "param_bgp_session_ribd_peers", [{'peer_address': '10.0.0.2', 'vrf': 'default'}])
             bind_cb("Verify BGP Peer TTL (`VerifyBGPPeerTtlMultiHops`)", "chk_bgp_ttl")
+            if st.session_state["master_test_states"].get("chk_bgp_ttl"):
+                render_list_editor("BGP Peers", "param_bgp_ttl_peers", [{'peer_address': '10.0.0.2', 'vrf': 'default', 'ttl': 1, 'max_ttl_hops': 1}])
             bind_cb("Verify BGP Update Errors (`VerifyBGPPeerUpdateErrors`)", "chk_bgp_update_errors")
+            if st.session_state["master_test_states"].get("chk_bgp_update_errors"):
+                render_list_editor("BGP Peers", "param_bgp_updateerr_peers", [{'peer_address': '10.0.0.2', 'vrf': 'default'}])
             bind_cb("Verify BGP Peers Health (`VerifyBGPPeersHealth`)", "chk_bgp_health")
+            if st.session_state["master_test_states"].get("chk_bgp_health"):
+                render_list_editor("Address Families", "param_bgp_health_afs", [{'afi': 'ipv4', 'safi': 'unicast', 'vrf': 'default'}])
             bind_cb("Verify BGP Peers Health RIBD (`VerifyBGPPeersHealthRibd`)", "chk_bgp_health_ribd")
             bind_cb("Verify BGP Redistribution (`VerifyBGPRedistribution`)", "chk_bgp_redistribution")
             bind_cb("Verify BGP Route ECMP (`VerifyBGPRouteECMP`)", "chk_bgp_ecmp")
+            if st.session_state["master_test_states"].get("chk_bgp_ecmp"):
+                render_list_editor("BGP Routes", "param_bgp_ecmp_routes", [{'prefix': '10.0.0.0/24', 'vrf': 'default', 'ecmp_count': 2}])
             bind_cb("Verify BGP Route Paths (`VerifyBGPRoutePaths`)", "chk_bgp_route_paths")
+            if st.session_state["master_test_states"].get("chk_bgp_route_paths"):
+                render_list_editor("BGP Routes (path nexthops, comma-separated within cell; origin fixed to Igp)", "param_bgp_route_paths", [{'prefix': '10.0.0.0/24', 'vrf': 'default', 'paths_nexthop': '10.0.0.1'}])
             
             bind_cb("Verify BGP Specific Peers (`VerifyBGPSpecificPeers`)", "chk_bgp_specific_peers")
             if st.session_state["master_test_states"].get("chk_bgp_specific_peers"):
-                col1, col2, col3 = st.columns(3)
-                with col1: st.text_input("Neighbor Address", value=st.session_state.get("param_bgp_spec_ip", "10.0.0.2"), key="param_bgp_spec_ip")
+                col1, col2 = st.columns(2)
+                with col1: st.text_input("Neighbor Address(es) (comma-separated)", value=st.session_state.get("param_bgp_spec_ip", "10.0.0.2"), key="param_bgp_spec_ip")
                 with col2: st.text_input("Neighbor VRF", value=st.session_state.get("param_bgp_spec_vrf", "default"), key="param_bgp_spec_vrf")
-                with col3: st.number_input("Expected ASN", value=st.session_state.get("param_bgp_spec_asn", 65000), key="param_bgp_spec_asn")
 
             bind_cb("Verify BGP Timers (`VerifyBGPTimers`)", "chk_bgp_timers")
+            if st.session_state["master_test_states"].get("chk_bgp_timers"):
+                render_list_editor("BGP Peers", "param_bgp_timers_peers", [{'peer_address': '10.0.0.2', 'vrf': 'default', 'hold_time': 180, 'keep_alive_time': 60}])
             bind_cb("Verify BGP Route Maps (`VerifyBgpRouteMaps`)", "chk_bgp_route_maps")
+            if st.session_state["master_test_states"].get("chk_bgp_route_maps"):
+                render_list_editor("BGP Peers", "param_bgp_routemaps_peers", [{'peer_address': '10.0.0.2', 'vrf': 'default', 'inbound_route_map': 'RM-IN', 'outbound_route_map': 'RM-OUT'}])
             bind_cb("Verify EVPN Type 2 Route (`VerifyEVPNType2Route`)", "chk_bgp_evpn_type2")
+            if st.session_state["master_test_states"].get("chk_bgp_evpn_type2"):
+                render_list_editor("VXLAN Endpoints", "param_bgp_evpn2_endpoints", [{'address': '192.168.20.102', 'vni': 10020}])
 
         elif selected_cat == "Routing_Generic":
             bind_cb("Verify IPv4 Route Next Hops (`VerifyIPv4RouteNextHops`)", "chk_rt_nexthops")
@@ -656,7 +759,11 @@ with tab_catalog:
                 st.text_input("Prefixes to check (comma-separated)", value=st.session_state.get("param_rt_pres_prefixes", "10.0.0.0/24"), key="param_rt_pres_prefixes")
 
             bind_cb("Verify IPv4 Route Presence Per VRF (`VerifyIPv4RoutePresencePerVRF`)", "chk_rt_presence_vrf")
+            if st.session_state["master_test_states"].get("chk_rt_presence_vrf"):
+                render_list_editor("Route Entries", "param_rt_pervrf_entries", [{'prefix': '10.0.0.0/24', 'vrf': 'default'}])
             bind_cb("Verify IPv4 Route Type (`VerifyIPv4RouteType`)", "chk_rt_route_type")
+            if st.session_state["master_test_states"].get("chk_rt_route_type"):
+                render_list_editor("Route Entries", "param_rt_type_entries", [{'prefix': '10.0.0.0/24', 'vrf': 'default', 'route_type': 'connected'}])
             bind_cb("Verify Routing Protocol Model (`VerifyRoutingProtocolModel`)", "chk_rt_model")
             bind_cb("Verify Routing Status (`VerifyRoutingStatus`)", "chk_rt_status")
             
@@ -668,26 +775,56 @@ with tab_catalog:
 
             st.divider()
             bind_cb("Verify ISIS Graceful Restart (`VerifyISISGracefulRestart`)", "chk_isis_graceful")
+            if st.session_state["master_test_states"].get("chk_isis_graceful"):
+                render_list_editor("IS-IS Instances", "param_isis_graceful_inst", [{'name': 'CORE-ISIS', 'vrf': 'default', 'graceful_restart': True, 'graceful_restart_helper': True}])
             bind_cb("Verify ISIS Interface Mode (`VerifyISISInterfaceMode`)", "chk_isis_intf_mode")
+            if st.session_state["master_test_states"].get("chk_isis_intf_mode"):
+                render_list_editor("IS-IS Interfaces", "param_isis_intfmode", [{'name': 'Ethernet1', 'vrf': 'default', 'mode': 'point-to-point'}])
             bind_cb("Verify ISIS Neighbor Count (`VerifyISISNeighborCount`)", "chk_isis_neighbor_cnt")
+            if st.session_state["master_test_states"].get("chk_isis_neighbor_cnt"):
+                render_list_editor("IS-IS Interfaces", "param_isis_neighbor_cnt", [{'name': 'Ethernet1', 'vrf': 'default', 'count': 1}])
             bind_cb("Verify ISIS Neighbor State (`VerifyISISNeighborState`)", "chk_isis_neighbor_state")
             bind_cb("Verify ISIS SR Adj (`VerifyISISSegmentRoutingAdjacencySegments`)", "chk_isis_sr_adj")
+            if st.session_state["master_test_states"].get("chk_isis_sr_adj"):
+                render_list_editor("IS-IS Instances", "param_isis_sr_adj_inst", [{'name': 'CORE-ISIS', 'vrf': 'default'}])
             bind_cb("Verify ISIS SR Dataplane (`VerifyISISSegmentRoutingDataplane`)", "chk_isis_sr_dataplane")
+            if st.session_state["master_test_states"].get("chk_isis_sr_dataplane"):
+                render_list_editor("IS-IS Instances", "param_isis_sr_dp_inst", [{'name': 'CORE-ISIS', 'vrf': 'default', 'dataplane': 'MPLS'}])
             bind_cb("Verify ISIS SR Tunnels (`VerifyISISSegmentRoutingTunnels`)", "chk_isis_sr_tunnels")
+            if st.session_state["master_test_states"].get("chk_isis_sr_tunnels"):
+                render_list_editor("Tunnels", "param_isis_sr_tunnels", [{'endpoint': '1.0.0.122/32'}])
             st.divider()
             bind_cb("Verify OSPF Max LSA (`VerifyOSPFMaxLSA`)", "chk_ospf_max_lsa")
             bind_cb("Verify OSPF Neighbor Count (`VerifyOSPFNeighborCount`)", "chk_ospf_neighbor_cnt")
+            if st.session_state["master_test_states"].get("chk_ospf_neighbor_cnt"):
+                st.number_input("Expected Neighbor Count (FULL state)", value=st.session_state.get("param_ospf_neighbor_cnt", 1), key="param_ospf_neighbor_cnt")
             bind_cb("Verify OSPF Neighbor State (`VerifyOSPFNeighborState`)", "chk_ospf_neighbor_state")
             bind_cb("Verify OSPF Specific Neighbors (`VerifyOSPFSpecificNeighbors`)", "chk_ospf_specific_neighbors")
+            if st.session_state["master_test_states"].get("chk_ospf_specific_neighbors"):
+                render_list_editor("OSPF Neighbors", "param_ospf_specific_neighbors", [{'instance': 100, 'vrf': 'default', 'ip_address': '10.1.255.46', 'local_interface': 'Ethernet2', 'area_id': '0', 'state': 'full'}])
 
         elif selected_cat == "Security":
             bind_cb("Verify API HTTP Status (`VerifyAPIHttpStatus`)", "chk_sec_api_http")
             bind_cb("Verify API HTTPS SSL (`VerifyAPIHttpsSSL`)", "chk_sec_api_https_ssl")
+            if st.session_state["master_test_states"].get("chk_sec_api_https_ssl"):
+                st.text_input("eAPI HTTPS SSL Profile", value=st.session_state.get("param_sec_https_profile", "eAPI_SSL_Profile"), key="param_sec_https_profile")
             bind_cb("Verify API IPv4 ACL (`VerifyAPIIPv4Acl`)", "chk_sec_api_v4_acl")
+            if st.session_state["master_test_states"].get("chk_sec_api_v4_acl"):
+                st.number_input("Expected IPv4 ACL Count", value=st.session_state.get("param_sec_api_v4_num", 1), key="param_sec_api_v4_num")
+                st.text_input("VRF", value=st.session_state.get("param_sec_api_v4_vrf", "default"), key="param_sec_api_v4_vrf")
             bind_cb("Verify API IPv6 ACL (`VerifyAPIIPv6Acl`)", "chk_sec_api_v6_acl")
+            if st.session_state["master_test_states"].get("chk_sec_api_v6_acl"):
+                st.number_input("Expected IPv6 ACL Count", value=st.session_state.get("param_sec_api_v6_num", 1), key="param_sec_api_v6_num")
+                st.text_input("VRF", value=st.session_state.get("param_sec_api_v6_vrf", "default"), key="param_sec_api_v6_vrf")
             bind_cb("Verify SSL Cert (`VerifyAPISSLCertificate`)", "chk_sec_ssl_cert")
+            if st.session_state["master_test_states"].get("chk_sec_ssl_cert"):
+                render_list_editor("SSL Certificates", "param_sec_ssl_certs", [{'certificate_name': 'ARISTA_SIGNING_CA.crt', 'expiry_threshold': 30, 'common_name': 'Arista Networks Internal IT CA', 'encryption_algorithm': 'RSA', 'key_size': 2048}])
             bind_cb("Verify Login Banner (`VerifyBannerLogin`)", "chk_sec_banner_login")
+            if st.session_state["master_test_states"].get("chk_sec_banner_login"):
+                st.text_input("Expected Login Banner", value=st.session_state.get("param_sec_banner_login_text", "Authorized Access Only"), key="param_sec_banner_login_text")
             bind_cb("Verify MOTD Banner (`VerifyBannerMotd`)", "chk_sec_banner_motd")
+            if st.session_state["master_test_states"].get("chk_sec_banner_motd"):
+                st.text_input("Expected MOTD Banner", value=st.session_state.get("param_sec_banner_motd_text", "Welcome"), key="param_sec_banner_motd_text")
             bind_cb("Verify Hardware Entropy (`VerifyHardwareEntropy`)", "chk_sec_entropy")
             bind_cb("Verify IPSec Health (`VerifyIPSecConnHealth`)", "chk_sec_ipsec_health")
             
@@ -700,9 +837,17 @@ with tab_catalog:
 
             bind_cb("Verify SSH FIPS (`VerifySSHFIPSRestrictions`)", "chk_sec_fips")
             bind_cb("Verify SSH IPv4 ACL (`VerifySSHIPv4Acl`)", "chk_sec_ssh_v4_acl")
+            if st.session_state["master_test_states"].get("chk_sec_ssh_v4_acl"):
+                st.number_input("Expected IPv4 ACL Count", value=st.session_state.get("param_sec_ssh_v4_num", 1), key="param_sec_ssh_v4_num")
+                st.text_input("VRF", value=st.session_state.get("param_sec_ssh_v4_vrf", "default"), key="param_sec_ssh_v4_vrf")
             bind_cb("Verify SSH IPv6 ACL (`VerifySSHIPv6Acl`)", "chk_sec_ssh_v6_acl")
+            if st.session_state["master_test_states"].get("chk_sec_ssh_v6_acl"):
+                st.number_input("Expected IPv6 ACL Count", value=st.session_state.get("param_sec_ssh_v6_num", 1), key="param_sec_ssh_v6_num")
+                st.text_input("VRF", value=st.session_state.get("param_sec_ssh_v6_vrf", "default"), key="param_sec_ssh_v6_vrf")
             bind_cb("Verify SSH Status (`VerifySSHStatus`)", "chk_ssh_status")
             bind_cb("Verify Specific IPSec (`VerifySpecificIPSecConn`)", "chk_sec_ipsec_specific")
+            if st.session_state["master_test_states"].get("chk_sec_ipsec_specific"):
+                render_list_editor("IPSec Peers", "param_sec_ipsec_conns", [{'peer': '10.0.0.1', 'vrf': 'default'}])
             bind_cb("Verify Telnet Status (`VerifyTelnetStatus`)", "chk_sec_telnet")
 
         elif selected_cat == "Services":
@@ -718,6 +863,8 @@ with tab_catalog:
                 with col3: st.number_input("Priority", value=st.session_state.get("param_svc_dns_prio", 1), key="param_svc_dns_prio")
 
             bind_cb("Verify Errdisable Recovery (`VerifyErrdisableRecovery`)", "chk_svc_errdisable_rec")
+            if st.session_state["master_test_states"].get("chk_svc_errdisable_rec"):
+                render_list_editor("Errdisable Reasons", "param_svc_errdisable_reasons", [{'reason': 'acl', 'interval': 30, 'status': 'Enabled'}])
             
             bind_cb("Verify Hostname (`VerifyHostname`)", "chk_hostname")
             if st.session_state["master_test_states"].get("chk_hostname"):
@@ -730,7 +877,11 @@ with tab_catalog:
 
             bind_cb("Verify SNMP Errors (`VerifySnmpErrorCounters`)", "chk_snmp_errors")
             bind_cb("Verify SNMP Group (`VerifySnmpGroup`)", "chk_snmp_group")
+            if st.session_state["master_test_states"].get("chk_snmp_group"):
+                render_list_editor("SNMP Groups", "param_snmp_groups", [{'group_name': 'GROUP1', 'version': 'v2c'}])
             bind_cb("Verify SNMP Logging (`VerifySnmpHostLogging`)", "chk_snmp_logging")
+            if st.session_state["master_test_states"].get("chk_snmp_logging"):
+                render_list_editor("SNMP Hosts", "param_snmp_log_hosts", [{'hostname': '192.168.1.100', 'vrf': 'default'}])
             
             bind_cb("Verify SNMP IPv4 ACL (`VerifySnmpIPv4Acl`)", "chk_snmp_v4_acl")
             if st.session_state["master_test_states"].get("chk_snmp_v4_acl"):
@@ -749,14 +900,20 @@ with tab_catalog:
                 st.text_input("Expected Location String", value=st.session_state.get("param_snmp_location_val", "DataCenter-Rack1"), key="param_snmp_location_val")
 
             bind_cb("Verify SNMP Notification (`VerifySnmpNotificationHost`)", "chk_snmp_notification")
+            if st.session_state["master_test_states"].get("chk_snmp_notification"):
+                render_list_editor("SNMP Notification Hosts", "param_snmp_notif_hosts", [{'hostname': '192.168.1.100', 'vrf': 'default', 'notification_type': 'trap', 'version': 'v2c', 'community_string': 'public'}])
             bind_cb("Verify SNMP PDU (`VerifySnmpPDUCounters`)", "chk_snmp_pdu")
             bind_cb("Verify SNMP Source Intf (`VerifySnmpSourceInterface`)", "chk_snmp_source")
+            if st.session_state["master_test_states"].get("chk_snmp_source"):
+                render_list_editor("Source Interfaces", "param_snmp_src_ifaces", [{'interface': 'Management1', 'vrf': 'default'}])
             
             bind_cb("Verify SNMP Status (`VerifySnmpStatus`)", "chk_snmp_status")
             if st.session_state["master_test_states"].get("chk_snmp_status"):
                 st.text_input("SNMP VRF", value=st.session_state.get("param_snmp_vrf", "default"), key="param_snmp_vrf")
 
             bind_cb("Verify SNMP User (`VerifySnmpUser`)", "chk_snmp_user")
+            if st.session_state["master_test_states"].get("chk_snmp_user"):
+                render_list_editor("SNMP Users", "param_snmp_users", [{'username': 'snmp-user', 'group_name': 'GROUP1', 'version': 'v3', 'auth_type': 'MD5', 'priv_type': 'AES-128'}])
 
         elif selected_cat == "Software":
             bind_cb("Verify EOS Extensions (`VerifyEOSExtensions`)", "chk_sw_extensions")
@@ -773,14 +930,30 @@ with tab_catalog:
             bind_cb("Verify STP Blocked Ports (`VerifySTPBlockedPorts`)", "chk_stp_blocked")
             bind_cb("Verify STP Counters (`VerifySTPCounters`)", "chk_stp_counters")
             bind_cb("Verify STP Disabled VLANs (`VerifySTPDisabledVlans`)", "chk_stp_disabled_vlans")
+            if st.session_state["master_test_states"].get("chk_stp_disabled_vlans"):
+                st.text_input("Disabled VLAN IDs (comma-separated)", value=st.session_state.get("param_stp_disabled_vlans", "10, 20"), key="param_stp_disabled_vlans")
             bind_cb("Verify STP Forwarding Ports (`VerifySTPForwardingPorts`)", "chk_stp_forwarding")
+            if st.session_state["master_test_states"].get("chk_stp_forwarding"):
+                st.text_input("VLAN IDs to Verify Forwarding (comma-separated)", value=st.session_state.get("param_stp_forwarding_vlans", "10, 20"), key="param_stp_forwarding_vlans")
             bind_cb("Verify STP Mode (`VerifySTPMode`)", "chk_stp_mode")
+            if st.session_state["master_test_states"].get("chk_stp_mode"):
+                st.selectbox("STP Mode", ['mstp', 'rstp', 'rapidPvst'], key="param_stp_mode_val")
+                st.text_input("VLAN IDs to Verify Mode (comma-separated)", value=st.session_state.get("param_stp_mode_vlans", "10, 20"), key="param_stp_mode_vlans")
             bind_cb("Verify STP Root Priority (`VerifySTPRootPriority`)", "chk_stp_root_priority")
+            if st.session_state["master_test_states"].get("chk_stp_root_priority"):
+                st.number_input("Expected Root Priority", value=st.session_state.get("param_stp_root_priority", 32768), key="param_stp_root_priority")
+                st.text_input("VLAN/MST Instance IDs (empty = all) (comma-separated)", value=st.session_state.get("param_stp_root_instances", ""), key="param_stp_root_instances")
             bind_cb("Verify STP Topology Changes (`VerifyStpTopologyChanges`)", "chk_stp_tc")
+            if st.session_state["master_test_states"].get("chk_stp_tc"):
+                st.number_input("Max Allowed Topology Changes", value=st.session_state.get("param_stp_tc_threshold", 10), key="param_stp_tc_threshold")
 
         elif selected_cat == "STUN":
             bind_cb("Verify STUN Client (`VerifyStunClient`)", "chk_stun_client")
+            if st.session_state["master_test_states"].get("chk_stun_client"):
+                render_list_editor("STUN Clients", "param_stun_client_list", [{'source_address': '172.18.3.2', 'public_address': '172.18.3.21', 'source_port': 4500, 'public_port': 6006}])
             bind_cb("Verify STUN Client Translation (`VerifyStunClientTranslation`)", "chk_stun_client_trans")
+            if st.session_state["master_test_states"].get("chk_stun_client_trans"):
+                render_list_editor("STUN Clients", "param_stun_client_trans_list", [{'source_address': '172.18.3.2', 'public_address': '172.18.3.21', 'source_port': 4500, 'public_port': 6006}])
             
             bind_cb("Verify STUN Server (`VerifyStunServer`)", "chk_stun_status")
 
@@ -809,6 +982,9 @@ with tab_catalog:
 
         elif selected_cat == "VLAN":
             bind_cb("Verify Dynamic VLAN Source (`VerifyDynamicVlanSource`)", "chk_vlan_dynamic")
+            if st.session_state["master_test_states"].get("chk_vlan_dynamic"):
+                st.text_input("Dynamic VLAN Sources (comma-separated)", value=st.session_state.get("param_vlan_dyn_sources", "evpn, mlagsync"), key="param_vlan_dyn_sources")
+                st.checkbox("Strict Mode", value=st.session_state.get("param_vlan_dyn_strict", False), key="param_vlan_dyn_strict")
             
             bind_cb("Verify Internal VLAN Policy (`VerifyVlanInternalPolicy`)", "chk_vlan_internal")
             if st.session_state["master_test_states"].get("chk_vlan_internal"):
@@ -818,6 +994,8 @@ with tab_catalog:
                 with col3: st.number_input("End VLAN ID", value=st.session_state.get("param_vlan_end", 4094), key="param_vlan_end")
 
             bind_cb("Verify VLAN Status (`VerifyVlanStatus`)", "chk_vlan_status")
+            if st.session_state["master_test_states"].get("chk_vlan_status"):
+                render_list_editor("VLANs", "param_vlan_status_list", [{'vlan_id': 10, 'status': 'active'}])
 
         elif selected_cat == "Custom":
             st.text_area("Custom YAML Input", value=st.session_state.get("param_custom_yaml", "# anta.tests...\n"), height=250, key="param_custom_yaml")
@@ -904,9 +1082,10 @@ with tab_catalog:
 
         "chk_cvx_active": ("anta.tests.cvx", "VerifyActiveCVXConnections", {"connections_count": int(st.session_state.get("param_cvx_active_cnt", 1))}),
         "chk_cvx_cluster": ("anta.tests.cvx", "VerifyCVXClusterStatus", {
+            "role": st.session_state.get("param_cvx_role", "Master"),
             "peer_status": [{
-                "peer_address": st.session_state.get("param_cvx_peer_ip", "10.0.0.1"),
-                "status": st.session_state.get("param_cvx_peer_status", "reachable")
+                "peer_name": st.session_state.get("param_cvx_peer_name", "cvx-red-2"),
+                "registration_state": st.session_state.get("param_cvx_reg_state", "Registration complete")
             }]
         }),
         "chk_cvx_mgmt": ("anta.tests.cvx", "VerifyManagementCVX", {"enabled": bool(st.session_state.get("param_cvx_mgmt_enabled", True))}),
@@ -965,7 +1144,7 @@ with tab_catalog:
                 "afi": "ipv4",
                 "safi": "unicast",
                 "vrf": st.session_state.get("param_bgp_spec_vrf", "default"),
-                "bgp_peers": [{"peer_address": ip.strip(), "asn": int(st.session_state.get("param_bgp_spec_asn", 65000))} for ip in st.session_state.get("param_bgp_spec_ip", "10.0.0.2").split(",") if ip.strip()]
+                "peers": [ip.strip() for ip in st.session_state.get("param_bgp_spec_ip", "10.0.0.2").split(",") if ip.strip()]
             }]
         }),
         "chk_rt_nexthops": ("anta.tests.routing.generic", "VerifyIPv4RouteNextHops", {"route_entries": [{"prefix": st.session_state.get("param_rt_nh_prefix", "10.0.0.0/24"), "nexthops": [ip.strip() for ip in st.session_state.get("param_rt_nh_ips", "10.100.0.1").split(",") if ip.strip()]}]}),
@@ -982,7 +1161,138 @@ with tab_catalog:
         "chk_svc_dns_lookup": ("anta.tests.services", "VerifyDNSLookup", {"domain_names": [d.strip() for d in st.session_state.get("param_svc_dns_domains", "arista.com").split(",") if d.strip()]}),
         "chk_svc_dns_servers": ("anta.tests.services", "VerifyDNSServers", {"dns_servers": [{"server_address": ip.strip(), "vrf": st.session_state.get("param_svc_dns_vrf", "default"), "priority": int(st.session_state.get("param_svc_dns_prio", 1))} for ip in st.session_state.get("param_svc_dns_ips", "8.8.8.8").split(",") if ip.strip()]}),
         "chk_stun_status": ("anta.tests.stun", "VerifyStunServer", None),
-        "chk_vlan_internal": ("anta.tests.vlan", "VerifyVlanInternalPolicy", {"policy": st.session_state.get("param_vlan_policy", "ascending"), "start_vlan_id": int(st.session_state.get("param_vlan_start", 1006)), "end_vlan_id": int(st.session_state.get("param_vlan_end", 4094))})
+        "chk_vlan_internal": ("anta.tests.vlan", "VerifyVlanInternalPolicy", {"policy": st.session_state.get("param_vlan_policy", "ascending"), "start_vlan_id": int(st.session_state.get("param_vlan_start", 1006)), "end_vlan_id": int(st.session_state.get("param_vlan_end", 4094))}),
+
+        # The following tests take no required inputs; their checkboxes previously had no
+        # entry here at all, so selecting them silently added nothing to the run catalog.
+        "chk_bgp_adv_communities": ("anta.tests.routing.bgp", "VerifyBGPAdvCommunities", {"bgp_peers": st.session_state.get("data_param_bgp_advcomm_peers", [{'peer_address': '10.0.0.2', 'vrf': 'default'}])}),
+        "chk_bgp_asn_cap": ("anta.tests.routing.bgp", "VerifyBGPPeerASNCap", {"bgp_peers": st.session_state.get("data_param_bgp_asncap_peers", [{'peer_address': '10.0.0.2', 'vrf': 'default'}])}),
+        "chk_bgp_drop_stats": ("anta.tests.routing.bgp", "VerifyBGPPeerDropStats", {"bgp_peers": st.session_state.get("data_param_bgp_dropstats_peers", [{'peer_address': '10.0.0.2', 'vrf': 'default'}])}),
+        "chk_bgp_ecmp": ("anta.tests.routing.bgp", "VerifyBGPRouteECMP", {"route_entries": st.session_state.get("data_param_bgp_ecmp_routes", [{'prefix': '10.0.0.0/24', 'vrf': 'default', 'ecmp_count': 2}])}),
+        "chk_bgp_evpn_type2": ("anta.tests.routing.bgp", "VerifyEVPNType2Route", {"vxlan_endpoints": st.session_state.get("data_param_bgp_evpn2_endpoints", [{'address': '192.168.20.102', 'vni': 10020}])}),
+        "chk_bgp_exchanged_routes": ("anta.tests.routing.bgp", "VerifyBGPExchangedRoutes", {"bgp_peers": expand_csv_fields(st.session_state.get("data_param_bgp_exch_peers", [{'peer_address': '10.0.0.2', 'vrf': 'default', 'advertised_routes': '10.0.0.0/24', 'received_routes': '10.0.1.0/24'}]), ["advertised_routes", "received_routes"])}),
+        "chk_bgp_health": ("anta.tests.routing.bgp", "VerifyBGPPeersHealth", {"address_families": st.session_state.get("data_param_bgp_health_afs", [{'afi': 'ipv4', 'safi': 'unicast', 'vrf': 'default'}])}),
+        "chk_bgp_health_ribd": ("anta.tests.routing.bgp", "VerifyBGPPeersHealthRibd", None),
+        "chk_bgp_md5": ("anta.tests.routing.bgp", "VerifyBGPPeerMD5Auth", {"bgp_peers": st.session_state.get("data_param_bgp_md5_peers", [{'peer_address': '10.0.0.2', 'vrf': 'default'}])}),
+        "chk_bgp_mp_caps": ("anta.tests.routing.bgp", "VerifyBGPPeerMPCaps", {"bgp_peers": expand_csv_fields(st.session_state.get("data_param_bgp_mpcaps_peers", [{'peer_address': '10.0.0.2', 'vrf': 'default', 'capabilities': 'ipv4Unicast'}]), ["capabilities"])}),
+        "chk_bgp_nlri": ("anta.tests.routing.bgp", "VerifyBGPNlriAcceptance", {"bgp_peers": expand_csv_fields(st.session_state.get("data_param_bgp_nlri_peers", [{'peer_address': '10.0.0.2', 'vrf': 'default', 'capabilities': 'ipv4Unicast'}]), ["capabilities"])}),
+        "chk_bgp_peer_group": ("anta.tests.routing.bgp", "VerifyBGPPeerGroup", {"bgp_peers": st.session_state.get("data_param_bgp_peergroup_peers", [{'peer_address': '10.0.0.2', 'vrf': 'default', 'peer_group': 'PG-SPINE'}])}),
+        "chk_bgp_peer_session": ("anta.tests.routing.bgp", "VerifyBGPPeerSession", {"bgp_peers": st.session_state.get("data_param_bgp_session_peers", [{'peer_address': '10.0.0.2', 'vrf': 'default'}])}),
+        "chk_bgp_peer_session_ribd": ("anta.tests.routing.bgp", "VerifyBGPPeerSessionRibd", {"bgp_peers": st.session_state.get("data_param_bgp_session_ribd_peers", [{'peer_address': '10.0.0.2', 'vrf': 'default'}])}),
+        "chk_bgp_redistribution": ("anta.tests.routing.bgp", "VerifyBGPRedistribution", None),
+        "chk_bgp_refresh_cap": ("anta.tests.routing.bgp", "VerifyBGPPeerRouteRefreshCap", {"bgp_peers": st.session_state.get("data_param_bgp_refresh_peers", [{'peer_address': '10.0.0.2', 'vrf': 'default'}])}),
+        "chk_bgp_route_maps": ("anta.tests.routing.bgp", "VerifyBgpRouteMaps", {"bgp_peers": st.session_state.get("data_param_bgp_routemaps_peers", [{'peer_address': '10.0.0.2', 'vrf': 'default', 'inbound_route_map': 'RM-IN', 'outbound_route_map': 'RM-OUT'}])}),
+        "chk_bgp_route_paths": ("anta.tests.routing.bgp", "VerifyBGPRoutePaths", {"route_entries": [
+            {**{k: v for k, v in r.items() if k != "paths_nexthop"}, "paths": [{"nexthop": nh.strip(), "origin": "Igp"} for nh in str(r.get("paths_nexthop", "")).split(",") if nh.strip()]}
+            for r in st.session_state.get("data_param_bgp_route_paths", [{'prefix': '10.0.0.0/24', 'vrf': 'default', 'paths_nexthop': '10.0.0.1'}])
+        ]}),
+        "chk_bgp_timers": ("anta.tests.routing.bgp", "VerifyBGPTimers", {"bgp_peers": st.session_state.get("data_param_bgp_timers_peers", [{'peer_address': '10.0.0.2', 'vrf': 'default', 'hold_time': 180, 'keep_alive_time': 60}])}),
+        "chk_bgp_ttl": ("anta.tests.routing.bgp", "VerifyBGPPeerTtlMultiHops", {"bgp_peers": st.session_state.get("data_param_bgp_ttl_peers", [{'peer_address': '10.0.0.2', 'vrf': 'default', 'ttl': 1, 'max_ttl_hops': 1}])}),
+        "chk_bgp_update_errors": ("anta.tests.routing.bgp", "VerifyBGPPeerUpdateErrors", {"bgp_peers": st.session_state.get("data_param_bgp_updateerr_peers", [{'peer_address': '10.0.0.2', 'vrf': 'default'}])}),
+        "chk_igmp_snooping_global": ("anta.tests.multicast", "VerifyIGMPSnoopingGlobal", {"enabled": bool(st.session_state.get("param_igmp_global_enabled", True))}),
+        "chk_igmp_snooping_vlans": ("anta.tests.multicast", "VerifyIGMPSnoopingVlans", {"vlans": {r["vlan_id"]: r['enabled'] for r in st.session_state.get("data_param_igmp_vlans", [{'vlan_id': 10, 'enabled': True}])}}),
+        "chk_int_ber": ("anta.tests.interfaces", "VerifyInterfacesBER", None),
+        "chk_int_counter_det": ("anta.tests.interfaces", "VerifyInterfacesCounterDetails", None),
+        "chk_int_disc": ("anta.tests.interfaces", "VerifyInterfaceDiscards", None),
+        "chk_int_ecn": ("anta.tests.interfaces", "VerifyInterfacesECNCounters", None),
+        "chk_int_egress_drop": ("anta.tests.interfaces", "VerifyInterfacesEgressQueueDrops", None),
+        "chk_int_err": ("anta.tests.interfaces", "VerifyInterfaceErrors", None),
+        "chk_int_err_dis": ("anta.tests.interfaces", "VerifyInterfaceErrDisabled", None),
+        "chk_int_ill_lacp": ("anta.tests.interfaces", "VerifyIllegalLACP", None),
+        "chk_int_lacp_status": ("anta.tests.interfaces", "VerifyLACPInterfacesStatus", {"interfaces": st.session_state.get("data_param_int_lacp_ifaces", [{'name': 'Ethernet1', 'portchannel': 'Port-Channel100'}])}),
+        "chk_int_loopback": ("anta.tests.interfaces", "VerifyLoopbackCount", {"number": int(st.session_state.get("param_int_loopback_num", 1))}),
+        "chk_int_optics_rx": ("anta.tests.interfaces", "VerifyInterfacesOpticsReceivePower", None),
+        "chk_int_optics_temp": ("anta.tests.interfaces", "VerifyInterfacesOpticsTemperature", None),
+        "chk_int_pfc": ("anta.tests.interfaces", "VerifyInterfacesPFCCounters", None),
+        "chk_int_port_channel": ("anta.tests.interfaces", "VerifyPortChannels", None),
+        "chk_int_proxy_arp": ("anta.tests.interfaces", "VerifyIPProxyARP", {"interfaces": [v.strip() for v in st.session_state.get("param_int_proxy_arp_ifaces", "Ethernet1").split(",") if v.strip()]}),
+        "chk_int_storm": ("anta.tests.interfaces", "VerifyStormControlDrops", None),
+        "chk_int_svi": ("anta.tests.interfaces", "VerifySVI", None),
+        "chk_int_trident": ("anta.tests.interfaces", "VerifyInterfacesTridentCounters", None),
+        "chk_int_util": ("anta.tests.interfaces", "VerifyInterfaceUtilization", None),
+        "chk_int_voq": ("anta.tests.interfaces", "VerifyInterfacesVoqAndEgressQueueDrops", None),
+        "chk_int_vrrp_mac": ("anta.tests.interfaces", "VerifyIpVirtualRouterMac", {"mac_address": st.session_state.get("param_int_vrrp_mac", "00:1c:73:00:dc:01")}),
+        "chk_isis_graceful": ("anta.tests.routing.isis", "VerifyISISGracefulRestart", {"instances": st.session_state.get("data_param_isis_graceful_inst", [{'name': 'CORE-ISIS', 'vrf': 'default', 'graceful_restart': True, 'graceful_restart_helper': True}])}),
+        "chk_isis_intf_mode": ("anta.tests.routing.isis", "VerifyISISInterfaceMode", {"interfaces": st.session_state.get("data_param_isis_intfmode", [{'name': 'Ethernet1', 'vrf': 'default', 'mode': 'point-to-point'}])}),
+        "chk_isis_neighbor_cnt": ("anta.tests.routing.isis", "VerifyISISNeighborCount", {"interfaces": st.session_state.get("data_param_isis_neighbor_cnt", [{'name': 'Ethernet1', 'vrf': 'default', 'count': 1}])}),
+        "chk_isis_neighbor_state": ("anta.tests.routing.isis", "VerifyISISNeighborState", None),
+        "chk_isis_sr_adj": ("anta.tests.routing.isis", "VerifyISISSegmentRoutingAdjacencySegments", {"instances": st.session_state.get("data_param_isis_sr_adj_inst", [{'name': 'CORE-ISIS', 'vrf': 'default'}])}),
+        "chk_isis_sr_dataplane": ("anta.tests.routing.isis", "VerifyISISSegmentRoutingDataplane", {"instances": st.session_state.get("data_param_isis_sr_dp_inst", [{'name': 'CORE-ISIS', 'vrf': 'default', 'dataplane': 'MPLS'}])}),
+        "chk_isis_sr_tunnels": ("anta.tests.routing.isis", "VerifyISISSegmentRoutingTunnels", {"entries": st.session_state.get("data_param_isis_sr_tunnels", [{'endpoint': '1.0.0.122/32'}])}),
+        "chk_lanz": ("anta.tests.lanz", "VerifyLANZ", None),
+        "chk_log_accounting": ("anta.tests.logging", "VerifyLoggingAccounting", None),
+        "chk_log_entries": ("anta.tests.logging", "VerifyLoggingEntries", {"logging_entries": st.session_state.get("data_param_log_entries", [{'regex_match': '.*ACCOUNTING-5-EXEC.*', 'severity_level': 'informational', 'last_number_messages': 10}])}),
+        "chk_log_errors": ("anta.tests.logging", "VerifyLoggingErrors", None),
+        "chk_log_generation": ("anta.tests.logging", "VerifyLoggingLogsGeneration", None),
+        "chk_log_hostname": ("anta.tests.logging", "VerifyLoggingHostname", None),
+        "chk_log_hosts": ("anta.tests.logging", "VerifyLoggingHosts", {"hosts": [v.strip() for v in st.session_state.get("param_log_hosts_list", "10.0.0.1").split(",") if v.strip()], "vrf": st.session_state.get("param_log_hosts_vrf", "default")}),
+        "chk_log_persistent": ("anta.tests.logging", "VerifyLoggingPersistent", None),
+        "chk_log_source_intf": ("anta.tests.logging", "VerifyLoggingSourceIntf", {"interface": st.session_state.get("param_log_src_intf", "Management1"), "vrf": st.session_state.get("param_log_src_intf_vrf", "default")}),
+        "chk_log_syslog": ("anta.tests.logging", "VerifySyslogLogging", None),
+        "chk_log_timestamp": ("anta.tests.logging", "VerifyLoggingTimestamp", None),
+        "chk_mlag_config_sanity": ("anta.tests.mlag", "VerifyMlagConfigSanity", None),
+        "chk_mlag_dual_primary": ("anta.tests.mlag", "VerifyMlagDualPrimary", {"detection_delay": int(st.session_state.get("param_mlag_dp_delay", 200)), "errdisabled": bool(st.session_state.get("param_mlag_dp_errdisabled", False)), "recovery_delay": int(st.session_state.get("param_mlag_dp_recovery", 60)), "recovery_delay_non_mlag": int(st.session_state.get("param_mlag_dp_recovery_non", 60))}),
+        "chk_mlag_interfaces": ("anta.tests.mlag", "VerifyMlagInterfaces", None),
+        "chk_mlag_priority": ("anta.tests.mlag", "VerifyMlagPrimaryPriority", {"primary_priority": int(st.session_state.get("param_mlag_primary_prio", 32760))}),
+        "chk_mlag_status": ("anta.tests.mlag", "VerifyMlagStatus", None),
+        "chk_ospf_max_lsa": ("anta.tests.routing.ospf", "VerifyOSPFMaxLSA", None),
+        "chk_ospf_neighbor_cnt": ("anta.tests.routing.ospf", "VerifyOSPFNeighborCount", {"number": int(st.session_state.get("param_ospf_neighbor_cnt", 1))}),
+        "chk_ospf_neighbor_state": ("anta.tests.routing.ospf", "VerifyOSPFNeighborState", None),
+        "chk_ospf_specific_neighbors": ("anta.tests.routing.ospf", "VerifyOSPFSpecificNeighbors", {"neighbors": st.session_state.get("data_param_ospf_specific_neighbors", [{'instance': 100, 'vrf': 'default', 'ip_address': '10.1.255.46', 'local_interface': 'Ethernet2', 'area_id': '0', 'state': 'full'}])}),
+        "chk_path_sel_health": ("anta.tests.path_selection", "VerifyPathsHealth", None),
+        "chk_path_sel_specific": ("anta.tests.path_selection", "VerifySpecificPath", {"paths": st.session_state.get("data_param_path_sel_paths", [{'peer': '10.255.0.1', 'path_group': 'internet', 'source_address': '100.64.3.2', 'destination_address': '100.64.1.2'}])}),
+        "chk_ptp_gm": ("anta.tests.ptp", "VerifyPtpGMStatus", {"gmid": st.session_state.get("param_ptp_gmid", "0xEC:46:70:FF:FE:00:00:00")}),
+        "chk_ptp_lock": ("anta.tests.ptp", "VerifyPtpLockStatus", None),
+        "chk_ptp_mode": ("anta.tests.ptp", "VerifyPtpModeStatus", None),
+        "chk_ptp_offset": ("anta.tests.ptp", "VerifyPtpOffset", None),
+        "chk_ptp_port_mode": ("anta.tests.ptp", "VerifyPtpPortModeStatus", None),
+        "chk_rt_model": ("anta.tests.routing.generic", "VerifyRoutingProtocolModel", None),
+        "chk_rt_presence_vrf": ("anta.tests.routing.generic", "VerifyIPv4RoutePresencePerVRF", {"route_entries": st.session_state.get("data_param_rt_pervrf_entries", [{'prefix': '10.0.0.0/24', 'vrf': 'default'}])}),
+        "chk_rt_route_type": ("anta.tests.routing.generic", "VerifyIPv4RouteType", {"routes_entries": st.session_state.get("data_param_rt_type_entries", [{'prefix': '10.0.0.0/24', 'vrf': 'default', 'route_type': 'connected'}])}),
+        "chk_rt_status": ("anta.tests.routing.generic", "VerifyRoutingStatus", None),
+        "chk_sec_api_http": ("anta.tests.security", "VerifyAPIHttpStatus", None),
+        "chk_sec_api_https_ssl": ("anta.tests.security", "VerifyAPIHttpsSSL", {"profile": st.session_state.get("param_sec_https_profile", "eAPI_SSL_Profile")}),
+        "chk_sec_api_v4_acl": ("anta.tests.security", "VerifyAPIIPv4Acl", {"number": int(st.session_state.get("param_sec_api_v4_num", 1)), "vrf": st.session_state.get("param_sec_api_v4_vrf", "default")}),
+        "chk_sec_api_v6_acl": ("anta.tests.security", "VerifyAPIIPv6Acl", {"number": int(st.session_state.get("param_sec_api_v6_num", 1)), "vrf": st.session_state.get("param_sec_api_v6_vrf", "default")}),
+        "chk_sec_banner_login": ("anta.tests.security", "VerifyBannerLogin", {"login_banner": st.session_state.get("param_sec_banner_login_text", "Authorized Access Only")}),
+        "chk_sec_banner_motd": ("anta.tests.security", "VerifyBannerMotd", {"motd_banner": st.session_state.get("param_sec_banner_motd_text", "Welcome")}),
+        "chk_sec_entropy": ("anta.tests.security", "VerifyHardwareEntropy", None),
+        "chk_sec_fips": ("anta.tests.security", "VerifySSHFIPSRestrictions", None),
+        "chk_sec_ipsec_health": ("anta.tests.security", "VerifyIPSecConnHealth", None),
+        "chk_sec_ipsec_specific": ("anta.tests.security", "VerifySpecificIPSecConn", {"ip_security_connections": st.session_state.get("data_param_sec_ipsec_conns", [{'peer': '10.0.0.1', 'vrf': 'default'}])}),
+        "chk_sec_ssh_v4_acl": ("anta.tests.security", "VerifySSHIPv4Acl", {"number": int(st.session_state.get("param_sec_ssh_v4_num", 1)), "vrf": st.session_state.get("param_sec_ssh_v4_vrf", "default")}),
+        "chk_sec_ssh_v6_acl": ("anta.tests.security", "VerifySSHIPv6Acl", {"number": int(st.session_state.get("param_sec_ssh_v6_num", 1)), "vrf": st.session_state.get("param_sec_ssh_v6_vrf", "default")}),
+        "chk_sec_ssl_cert": ("anta.tests.security", "VerifyAPISSLCertificate", {"certificates": st.session_state.get("data_param_sec_ssl_certs", [{'certificate_name': 'ARISTA_SIGNING_CA.crt', 'expiry_threshold': 30, 'common_name': 'Arista Networks Internal IT CA', 'encryption_algorithm': 'RSA', 'key_size': 2048}])}),
+        "chk_sec_telnet": ("anta.tests.security", "VerifyTelnetStatus", None),
+        "chk_snmp_errors": ("anta.tests.snmp", "VerifySnmpErrorCounters", None),
+        "chk_snmp_group": ("anta.tests.snmp", "VerifySnmpGroup", {"snmp_groups": st.session_state.get("data_param_snmp_groups", [{'group_name': 'GROUP1', 'version': 'v2c'}])}),
+        "chk_snmp_logging": ("anta.tests.snmp", "VerifySnmpHostLogging", {"hosts": st.session_state.get("data_param_snmp_log_hosts", [{'hostname': '192.168.1.100', 'vrf': 'default'}])}),
+        "chk_snmp_notification": ("anta.tests.snmp", "VerifySnmpNotificationHost", {"notification_hosts": st.session_state.get("data_param_snmp_notif_hosts", [{'hostname': '192.168.1.100', 'vrf': 'default', 'notification_type': 'trap', 'version': 'v2c', 'community_string': 'public'}])}),
+        "chk_snmp_pdu": ("anta.tests.snmp", "VerifySnmpPDUCounters", None),
+        "chk_snmp_source": ("anta.tests.snmp", "VerifySnmpSourceInterface", {"interfaces": st.session_state.get("data_param_snmp_src_ifaces", [{'interface': 'Management1', 'vrf': 'default'}])}),
+        "chk_snmp_user": ("anta.tests.snmp", "VerifySnmpUser", {"snmp_users": st.session_state.get("data_param_snmp_users", [{'username': 'snmp-user', 'group_name': 'GROUP1', 'version': 'v3', 'auth_type': 'MD5', 'priv_type': 'AES-128'}])}),
+        "chk_ssh_status": ("anta.tests.security", "VerifySSHStatus", None),
+        "chk_stp_blocked": ("anta.tests.stp", "VerifySTPBlockedPorts", None),
+        "chk_stp_counters": ("anta.tests.stp", "VerifySTPCounters", None),
+        "chk_stp_disabled_vlans": ("anta.tests.stp", "VerifySTPDisabledVlans", {"vlans": [int(v.strip()) for v in st.session_state.get("param_stp_disabled_vlans", "10, 20").split(",") if v.strip()]}),
+        "chk_stp_forwarding": ("anta.tests.stp", "VerifySTPForwardingPorts", {"vlans": [int(v.strip()) for v in st.session_state.get("param_stp_forwarding_vlans", "10, 20").split(",") if v.strip()]}),
+        "chk_stp_mode": ("anta.tests.stp", "VerifySTPMode", {"mode": st.session_state.get("param_stp_mode_val", 'mstp'), "vlans": [int(v.strip()) for v in st.session_state.get("param_stp_mode_vlans", "10, 20").split(",") if v.strip()]}),
+        "chk_stp_root_priority": ("anta.tests.stp", "VerifySTPRootPriority", {"priority": int(st.session_state.get("param_stp_root_priority", 32768)), "instances": [int(v.strip()) for v in st.session_state.get("param_stp_root_instances", "").split(",") if v.strip()]}),
+        "chk_stp_tc": ("anta.tests.stp", "VerifyStpTopologyChanges", {"threshold": int(st.session_state.get("param_stp_tc_threshold", 10))}),
+        "chk_stun_client": ("anta.tests.stun", "VerifyStunClient", {"stun_clients": st.session_state.get("data_param_stun_client_list", [{'source_address': '172.18.3.2', 'public_address': '172.18.3.21', 'source_port': 4500, 'public_port': 6006}])}),
+        "chk_stun_client_trans": ("anta.tests.stun", "VerifyStunClientTranslation", {"stun_clients": st.session_state.get("data_param_stun_client_trans_list", [{'source_address': '172.18.3.2', 'public_address': '172.18.3.21', 'source_port': 4500, 'public_port': 6006}])}),
+        "chk_svc_errdisable_rec": ("anta.tests.services", "VerifyErrdisableRecovery", {"reasons": st.session_state.get("data_param_svc_errdisable_reasons", [{'reason': 'acl', 'interval': 30, 'status': 'Enabled'}])}),
+        "chk_tcam_profile": ("anta.tests.profiles", "VerifyTcamProfile", {"profile": st.session_state.get("param_tcam_profile", "default")}),
+        "chk_uft_mode": ("anta.tests.profiles", "VerifyUnifiedForwardingTableMode", {"mode": st.session_state.get("param_uft_mode", "flexible")}),
+        "chk_vlan_dynamic": ("anta.tests.vlan", "VerifyDynamicVlanSource", {"sources": [v.strip() for v in st.session_state.get("param_vlan_dyn_sources", "evpn, mlagsync").split(",") if v.strip()], "strict": bool(st.session_state.get("param_vlan_dyn_strict", False))}),
+        "chk_vxlan_conn": ("anta.tests.vxlan", "VerifyVxlan1ConnSettings", {"source_interface": st.session_state.get("param_vxlan_src_intf", "Loopback1"), "udp_port": int(st.session_state.get("param_vxlan_udp_port", 4789))}),
+        "chk_vxlan_intf": ("anta.tests.vxlan", "VerifyVxlan1Interface", None),
+        "chk_vxlan_sanity": ("anta.tests.vxlan", "VerifyVxlanConfigSanity", None),
+        "chk_vxlan_vni_binding": ("anta.tests.vxlan", "VerifyVxlanVniBinding", {"bindings": {r["vni"]: r['binding'] for r in st.session_state.get("data_param_vxlan_vni_bindings", [{'vni': 10010, 'binding': '10'}])}}),
+        "chk_vxlan_vtep": ("anta.tests.vxlan", "VerifyVxlanVtep", {"vteps": [v.strip() for v in st.session_state.get("param_vxlan_vteps", "10.1.1.1").split(",") if v.strip()]}),
+        "chk_vxlan_vvtep": ("anta.tests.vxlan", "VerifyVxlan1VVTEPIPAddresses", {"ipv4_address": st.session_state.get("param_vxlan_vvtep_v4", "10.255.1.1") or None, "ipv6_address": st.session_state.get("param_vxlan_vvtep_v6", "") or None}),
+        "chk_bgp_peer_route_limit": ("anta.tests.routing.bgp", "VerifyBGPPeerRouteLimit", {"bgp_peers": st.session_state.get("data_param_bgp_routelimit_peers", [{'peer_address': '10.0.0.2', 'vrf': 'default', 'maximum_routes': 12000, 'warning_limit': 10000}])}),
+        "chk_vlan_status": ("anta.tests.vlan", "VerifyVlanStatus", {"vlans": st.session_state.get("data_param_vlan_status_list", [{'vlan_id': 10, 'status': 'active'}])}),
     }
 
     # Map dynamic config rules if box is ticked
