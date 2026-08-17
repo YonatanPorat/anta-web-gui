@@ -6,6 +6,8 @@ import yaml
 import os
 import re
 import uuid
+import fcntl
+from contextlib import contextmanager
 from anta.catalog import AntaCatalog
 
 NRFU_SUBPROCESS_TIMEOUT = 600
@@ -14,23 +16,68 @@ CLI_SUBPROCESS_TIMEOUT = 60
 # Configure the web page layout
 st.set_page_config(page_title="ANTA Dashboard", layout="wide", initial_sidebar_state="expanded")
 
+# --- Cross-session file locking ---
+# Concurrent users share settings.json/inventory.yml on disk; without a lock,
+# overlapping read-modify-write cycles silently drop each other's changes or
+# hand back a partially-written file to a concurrent reader.
+@contextmanager
+def locked_file(path):
+    lock_path = f"{path}.lock"
+    with open(lock_path, "w") as lock_fd:
+        fcntl.flock(lock_fd, fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            fcntl.flock(lock_fd, fcntl.LOCK_UN)
+
+def _atomic_write(path, write_fn):
+    # Write-then-rename so any reader (including the external `anta` CLI
+    # subprocess, which doesn't participate in our flock) always sees either
+    # the old or the new file in full, never a partially-written one.
+    tmp_path = f"{path}.tmp.{uuid.uuid4().hex}"
+    with open(tmp_path, "w") as f:
+        write_fn(f)
+    os.replace(tmp_path, path)
+
 # --- Persistent Settings Helper ---
 SETTINGS_FILE = "settings.json"
 
 def load_settings():
-    if os.path.exists(SETTINGS_FILE):
-        try:
-            with open(SETTINGS_FILE, "r") as f:
-                return json.load(f)
-        except Exception:
-            pass
-    return {}
+    with locked_file(SETTINGS_FILE):
+        if os.path.exists(SETTINGS_FILE):
+            try:
+                with open(SETTINGS_FILE, "r") as f:
+                    return json.load(f)
+            except Exception:
+                pass
+        return {}
 
 def save_settings(data_dict):
-    current = load_settings()
-    current.update(data_dict)
-    with open(SETTINGS_FILE, "w") as f:
-        json.dump(current, f, indent=4)
+    with locked_file(SETTINGS_FILE):
+        current = {}
+        if os.path.exists(SETTINGS_FILE):
+            try:
+                with open(SETTINGS_FILE, "r") as f:
+                    current = json.load(f)
+            except Exception:
+                current = {}
+        current.update(data_dict)
+        _atomic_write(SETTINGS_FILE, lambda f: json.dump(current, f, indent=4))
+
+# --- Persistent Inventory Helper ---
+INVENTORY_FILE = "inventory.yml"
+
+def load_inventory():
+    with locked_file(INVENTORY_FILE):
+        try:
+            with open(INVENTORY_FILE, "r") as f:
+                return yaml.safe_load(f) or {}
+        except FileNotFoundError:
+            return {}
+
+def save_inventory(inv_payload):
+    with locked_file(INVENTORY_FILE):
+        _atomic_write(INVENTORY_FILE, lambda f: yaml.safe_dump(inv_payload, f, sort_keys=False))
 
 saved_settings = load_settings()
 
@@ -220,9 +267,7 @@ with tab_creds:
 # ==========================================
 with tab_inventory:
     st.subheader("Inventory Manager")
-    try:
-        with open("inventory.yml", "r") as f: inv_data = yaml.safe_load(f) or {}
-    except FileNotFoundError: inv_data = {}
+    inv_data = load_inventory()
 
     anta_inv = inv_data.get("anta_inventory", {})
     df_hosts = pd.DataFrame([dict(h) for h in anta_inv.get("hosts", [])])
@@ -242,8 +287,7 @@ with tab_inventory:
                 "ranges": edited_ranges.dropna(how="all").to_dict("records")
             }
         }
-        with open("inventory.yml", "w") as f:
-            yaml.safe_dump(inv_payload, f, sort_keys=False)
+        save_inventory(inv_payload)
         st.success("✅ Inventory.yml saved successfully!")
 
 # ==========================================
@@ -1051,8 +1095,7 @@ with tab_dashboard:
                 
                 # 2. Write unique inventory file for this execution run
                 try:
-                    with open("inventory.yml", "r") as f:
-                        inv_data = yaml.safe_load(f) or {}
+                    inv_data = load_inventory()
                 except Exception:
                     inv_data = {}
                 with open(run_inventory_file, "w") as f:
@@ -1192,8 +1235,7 @@ with tab_cli:
     st.markdown("Use this tab to run ad-hoc commands on a specific device.")
     
     try:
-        with open("inventory.yml", "r") as f:
-            inv_data = yaml.safe_load(f) or {}
+        inv_data = load_inventory()
         hosts = inv_data.get("anta_inventory", {}).get("hosts", [])
         
         device_map = {}
