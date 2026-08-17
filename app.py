@@ -8,6 +8,9 @@ import re
 import uuid
 from anta.catalog import AntaCatalog
 
+NRFU_SUBPROCESS_TIMEOUT = 600
+CLI_SUBPROCESS_TIMEOUT = 60
+
 # Configure the web page layout
 st.set_page_config(page_title="ANTA Dashboard", layout="wide", initial_sidebar_state="expanded")
 
@@ -1026,14 +1029,19 @@ with tab_dashboard:
     )
     
     if st.button("🚀 Execute Tests", type="primary", use_container_width=True):
-        os.environ["ANTA_USERNAME"] = st.session_state.anta_user
-        os.environ["ANTA_PASSWORD"] = st.session_state.anta_pass
-        
+        # Build an isolated env for this run's subprocess instead of mutating the
+        # shared process-wide os.environ, which would race with other concurrent
+        # user sessions running in the same Streamlit process.
+        run_env = os.environ.copy()
+        run_env["ANTA_USERNAME"] = st.session_state.anta_user
+        run_env["ANTA_PASSWORD"] = st.session_state.anta_pass
+
         # Unique UUID per execution run to ensure isolated parallel execution
         run_id = str(uuid.uuid4())[:8]
         run_catalog_file = f"temp_catalog_{run_id}.yml"
         run_inventory_file = f"temp_inventory_{run_id}.yml"
-        
+
+        full_log = ""
         with st.spinner(f"Connecting to switches and running tests (Run ID: {run_id})... Please wait."):
             try:
                 # 1. Write unique catalog file for this execution run
@@ -1055,8 +1063,8 @@ with tab_dashboard:
                 if run_tags_input.strip():
                     cmd.extend(["--tags", run_tags_input.strip()])
                 cmd.extend(["--inventory", run_inventory_file, "--catalog", run_catalog_file, "--ignore-status", "json"])
-                
-                result = subprocess.run(cmd, capture_output=True, text=True)
+
+                result = subprocess.run(cmd, capture_output=True, text=True, env=run_env, timeout=NRFU_SUBPROCESS_TIMEOUT)
                 output = result.stdout
                 stderr_output = result.stderr or ""
                 
@@ -1160,10 +1168,13 @@ with tab_dashboard:
                                         
                                     if idx < fail_count:
                                         st.divider()
+            except subprocess.TimeoutExpired:
+                st.error(f"⏱️ Test run timed out after {NRFU_SUBPROCESS_TIMEOUT}s (Run ID: {run_id}). The device(s) may be unreachable or the test set too large.")
             except Exception as e:
                 st.error(f"Error parsing results: {e}")
-                with st.expander("View Full Raw Output"):
-                    st.code(full_log, language=None)
+                if full_log:
+                    with st.expander("View Full Raw Output"):
+                        st.code(full_log, language=None)
             finally:
                 # Cleanup temporary isolated execution files
                 if os.path.exists(run_catalog_file):
@@ -1210,20 +1221,25 @@ with tab_cli:
         
         if st.button("Run Command", type="primary"):
             save_settings({"default_cli_device_label": selected_label})
-            os.environ["ANTA_USERNAME"] = st.session_state.anta_user
-            os.environ["ANTA_PASSWORD"] = st.session_state.anta_pass
-            
+            run_env = os.environ.copy()
+            run_env["ANTA_USERNAME"] = st.session_state.anta_user
+            run_env["ANTA_PASSWORD"] = st.session_state.anta_pass
+
             with st.spinner(f"Running '{cmd_input}' on {selected_label}..."):
                 exec_cmd = [
-                    "anta", "debug", "run-cmd", 
+                    "anta", "debug", "run-cmd",
                     "--command", cmd_input,
                     "--inventory", "inventory.yml",
                     "--device", selected_device_id
                 ]
-                
-                result = subprocess.run(exec_cmd, capture_output=True, text=True)
-                
-                if result.returncode == 0:
+
+                try:
+                    result = subprocess.run(exec_cmd, capture_output=True, text=True, env=run_env, timeout=CLI_SUBPROCESS_TIMEOUT)
+                except subprocess.TimeoutExpired:
+                    result = None
+                    st.error(f"⏱️ Command timed out after {CLI_SUBPROCESS_TIMEOUT}s. The device may be unreachable.")
+
+                if result is not None and result.returncode == 0:
                     st.success(f"Command executed successfully on {selected_label}!")
                     
                     try:
@@ -1257,6 +1273,6 @@ with tab_cli:
                     except Exception:
                         st.markdown("#### 📄 Raw Text Output")
                         st.code(result.stdout, language=None)
-                else:
+                elif result is not None:
                     st.error("Error executing command.")
                     st.code(result.stderr or result.stdout, language=None)
