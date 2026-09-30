@@ -158,6 +158,37 @@ ALL_TEST_KEYS = [
     "chk_adv_sa174", "chk_adv_sa175", "chk_adv_sa176", "chk_adv_sa177", "chk_adv_sa178",
 ]
 
+# Test keys grouped by their "Manage Tests" category, for the per-category
+# select-all/deselect-all controls. Keys not covered by any category (e.g. the
+# freeform "Custom" YAML tab) are simply absent here.
+CATEGORY_KEYS = {
+    "AAA": ["chk_aaa_authen", "chk_aaa_authz", "chk_aaa_acct_default", "chk_aaa_acct_console", "chk_aaa_tacacs_src", "chk_aaa_tacacs_servers", "chk_aaa_tacacs_groups"],
+    "AVT_BFD": ["chk_avt_path", "chk_avt_role", "chk_avt_specific_path", "chk_bfd_health", "chk_bfd_intervals", "chk_bfd_protocols", "chk_bfd_specific"],
+    "Configuration": ["chk_cfg_rules", "chk_cfg_diff", "chk_cfg_lines", "chk_cfg_ztp", "chk_cfg_banner_login", "chk_cfg_banner_motd"],
+    "Connectivity": ["chk_conn_lldp", "chk_conn_ping"],
+    "CVX": ["chk_cvx_active", "chk_cvx_cluster", "chk_cvx_mgmt", "chk_cvx_client_mounts", "chk_cvx_server_mounts"],
+    "EVPN_VXLAN": ["chk_evpn_type5", "chk_vxlan_conn", "chk_vxlan_intf", "chk_vxlan_vvtep", "chk_vxlan_sanity", "chk_vxlan_vni_binding", "chk_vxlan_vtep"],
+    "FieldNotices": ["chk_fn_fn44", "chk_fn_fn72"],
+    "Flow_GreenT": ["chk_flow_tracking", "chk_greent_policy", "chk_greent_counters"],
+    "Hardware": ["chk_hw_linecards", "chk_hw_drops", "chk_hw_chassis", "chk_hw_cooling_fans", "chk_hw_power", "chk_hw_sys_cooling", "chk_hw_capacity", "chk_hw_inventory", "chk_hw_module", "chk_hw_pcie", "chk_hw_supervisor", "chk_hw_temp", "chk_hw_trans", "chk_hw_trans_temp"],
+    "Interfaces": ["chk_int_proxy_arp", "chk_int_ill_lacp", "chk_int_disc", "chk_int_err_dis", "chk_int_err", "chk_int_ipv4", "chk_int_util", "chk_int_ber", "chk_int_counter_det", "chk_int_ecn", "chk_int_egress_drop", "chk_int_optics_rx", "chk_int_optics_temp", "chk_int_pfc", "chk_int_speed", "chk_int_status", "chk_int_trident", "chk_int_voq", "chk_int_vrrp_mac", "chk_int_l2mtu", "chk_int_l3mtu", "chk_int_lacp_status", "chk_int_loopback", "chk_int_port_channel", "chk_int_svi", "chk_int_storm"],
+    "Logging": ["chk_lanz", "chk_log_accounting", "chk_log_entries", "chk_log_errors", "chk_log_hostname", "chk_log_hosts", "chk_log_generation", "chk_log_persistent", "chk_log_source_intf", "chk_log_timestamp", "chk_log_syslog"],
+    "MLAG_Multicast": ["chk_mlag_config_sanity", "chk_mlag_dual_primary", "chk_mlag_interfaces", "chk_mlag_priority", "chk_mlag_reload_delay", "chk_mlag_status", "chk_igmp_snooping_global", "chk_igmp_snooping_vlans"],
+    "Path_Profiles": ["chk_path_sel_health", "chk_path_sel_specific", "chk_tcam_profile", "chk_uft_mode"],
+    "PTP": ["chk_ptp_gm", "chk_ptp_lock", "chk_ptp_mode", "chk_ptp_offset", "chk_ptp_port_mode"],
+    "BGP": ["chk_bgp_adv_communities", "chk_bgp_exchanged_routes", "chk_bgp_nlri", "chk_bgp_asn_cap", "chk_bgp_peer_count", "chk_bgp_drop_stats", "chk_bgp_peer_group", "chk_bgp_md5", "chk_bgp_mp_caps", "chk_bgp_peer_route_limit", "chk_bgp_refresh_cap", "chk_bgp_peer_session", "chk_bgp_peer_session_ribd", "chk_bgp_ttl", "chk_bgp_update_errors", "chk_bgp_health", "chk_bgp_health_ribd", "chk_bgp_redistribution", "chk_bgp_ecmp", "chk_bgp_route_paths", "chk_bgp_specific_peers", "chk_bgp_timers", "chk_bgp_route_maps", "chk_bgp_evpn_type2"],
+    "Routing_Generic": ["chk_rt_nexthops", "chk_rt_presence_prefix", "chk_rt_presence_vrf", "chk_rt_route_type", "chk_rt_model", "chk_rt_status", "chk_rt_size", "chk_isis_graceful", "chk_isis_intf_mode", "chk_isis_neighbor_cnt", "chk_isis_neighbor_state", "chk_isis_sr_adj", "chk_isis_sr_dataplane", "chk_isis_sr_tunnels", "chk_ospf_max_lsa", "chk_ospf_neighbor_cnt", "chk_ospf_neighbor_state", "chk_ospf_specific_neighbors"],
+    "Security": ["chk_sec_api_http", "chk_sec_api_https_ssl", "chk_sec_api_v4_acl", "chk_sec_api_v6_acl", "chk_sec_ssl_cert", "chk_sec_banner_login", "chk_sec_banner_motd", "chk_sec_entropy", "chk_sec_ipsec_health", "chk_sec_v4_acl", "chk_sec_fips", "chk_sec_ssh_v4_acl", "chk_sec_ssh_v6_acl", "chk_ssh_status", "chk_sec_ipsec_specific", "chk_sec_telnet"],
+    "Services": ["chk_svc_dns_lookup", "chk_svc_dns_servers", "chk_svc_errdisable_rec", "chk_hostname"],
+    "SNMP": ["chk_snmp_contact", "chk_snmp_errors", "chk_snmp_group", "chk_snmp_logging", "chk_snmp_v4_acl", "chk_snmp_v6_acl", "chk_snmp_location", "chk_snmp_notification", "chk_snmp_pdu", "chk_snmp_source", "chk_snmp_status", "chk_snmp_user"],
+    "Software": ["chk_sw_extensions", "chk_sw_version", "chk_sw_terminattr"],
+    "STP": ["chk_stp_blocked", "chk_stp_counters", "chk_stp_disabled_vlans", "chk_stp_forwarding", "chk_stp_mode", "chk_stp_root_priority", "chk_stp_tc"],
+    "STUN": ["chk_stun_client", "chk_stun_client_trans", "chk_stun_status"],
+    "System": ["chk_sys_agent_logs", "chk_sys_cpu", "chk_sys_coredump", "chk_sys_file_presence", "chk_sys_fs_util", "chk_sys_flash_util", "chk_sys_maintenance", "chk_sys_mem", "chk_sys_ntp", "chk_sys_ntp_assoc", "chk_sys_reload", "chk_sys_uptime"],
+    "VLAN": ["chk_vlan_dynamic", "chk_vlan_internal", "chk_vlan_status"],
+    "Advisories": ["chk_adv_sa117", "chk_adv_sa140", "chk_adv_sa142", "chk_adv_sa146", "chk_adv_sa147", "chk_adv_sa149", "chk_adv_sa150", "chk_adv_sa151", "chk_adv_sa152", "chk_adv_sa153", "chk_adv_sa154", "chk_adv_sa155", "chk_adv_sa156", "chk_adv_sa157", "chk_adv_sa158", "chk_adv_sa159", "chk_adv_sa160", "chk_adv_sa161", "chk_adv_sa162", "chk_adv_sa163", "chk_adv_sa164", "chk_adv_sa165", "chk_adv_sa166", "chk_adv_sa167", "chk_adv_sa168", "chk_adv_sa169", "chk_adv_sa170", "chk_adv_sa171", "chk_adv_sa172", "chk_adv_sa173", "chk_adv_sa174", "chk_adv_sa175", "chk_adv_sa176", "chk_adv_sa177", "chk_adv_sa178"],
+}
+
 default_config_rules = [
     {"Section": "", "Match": "aaa authorization exec default local", "Mode": "exact", "Absent": False, "Description": "AAA authorization"},
     {"Section": "management api http-commands", "Match": "no shutdown", "Mode": "exact", "Absent": False, "Description": "eAPI enabled"}
@@ -329,7 +360,28 @@ with tab_catalog:
         selected_cat = categories_map[selected_cat_label]
 
     with main_content_col:
-        st.markdown(f"### {selected_cat_label}")
+        header_col, toggle_col = st.columns([3, 1])
+        header_col.markdown(f"### {selected_cat_label}")
+
+        cat_keys = CATEGORY_KEYS.get(selected_cat, [])
+        if cat_keys:
+            cat_all_selected = all(st.session_state["master_test_states"].get(k, False) for k in cat_keys)
+
+            def toggle_category(keys=cat_keys):
+                new_state = not all(st.session_state["master_test_states"].get(k, False) for k in keys)
+                for k in keys:
+                    st.session_state["master_test_states"][k] = new_state
+                    st.session_state[k] = new_state
+
+            with toggle_col:
+                st.write("")
+                st.button(
+                    "❌ Deselect Section" if cat_all_selected else "✅ Select Section",
+                    on_click=toggle_category,
+                    use_container_width=True,
+                    key=f"btn_toggle_{selected_cat}",
+                )
+
         def bind_cb(label, key):
             return st.checkbox(
                 label,
