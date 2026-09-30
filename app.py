@@ -393,28 +393,52 @@ with tab_catalog:
 
     with nav_side_col:
         st.markdown("#### 📂 Categories")
-        categories_map = {
-            # Security & compliance posture
-            "🔐 AAA": "AAA", "🔒 Security": "Security", "🚨 Security Advisories": "Advisories",
-            "⚠️ Field Notices": "FieldNotices", "💿 Software": "Software",
-            # Device health
-            "🔌 Hardware": "Hardware", "💻 System": "System",
-            # Core L2/L1 fundamentals
-            "🌐 Interfaces": "Interfaces", "🌐 Connectivity": "Connectivity", "🏢 VLAN": "VLAN", "🛡️ STP": "STP",
-            # L2/L3 overlay & multi-chassis
-            "🤝 MLAG & Multicast": "MLAG_Multicast", "☁️ EVPN & VXLAN": "EVPN_VXLAN",
-            # Routing
-            "🗺️ Routing BGP": "BGP", "🗺️ Routing Generic & OSPF & ISIS": "Routing_Generic",
-            "🔀 AVT & BFD": "AVT_BFD", "🛤️ Path Selection & Profiles": "Path_Profiles",
-            # Services & management
-            "⏱️ PTP": "PTP", "🖥️ CVX": "CVX", "🖧 SNMP": "SNMP", "🛠️ Services": "Services",
-            "🌊 Flow Tracking & GreenT": "Flow_GreenT", "📊 LANZ & Logging": "Logging", "📞 STUN": "STUN",
-            "⚙️ Configuration": "Configuration",
-            # Freeform
-            "🧩 Custom YAML": "Custom",
-        }
-        selected_cat_label = st.radio("Select Category", options=list(categories_map.keys()), label_visibility="collapsed")
-        selected_cat = categories_map[selected_cat_label]
+        CATEGORY_GROUPS = [
+            ("🔒 Security", {
+                "🔐 AAA": "AAA", "🔒 Security": "Security", "🚨 Security Advisories": "Advisories",
+                "⚠️ Field Notices": "FieldNotices",
+            }),
+            ("🔌 Hardware", {"🔌 Hardware": "Hardware"}),
+            ("💻 System", {"💻 System": "System"}),
+            ("⚙️ Configuration", {"⚙️ Configuration": "Configuration"}),
+            ("🌐 Core Networking", {
+                "🌐 Interfaces": "Interfaces", "🌐 Connectivity": "Connectivity", "🏢 VLAN": "VLAN", "🛡️ STP": "STP",
+            }),
+            ("🤝 Overlay & Multi-chassis", {
+                "🤝 MLAG & Multicast": "MLAG_Multicast", "☁️ EVPN & VXLAN": "EVPN_VXLAN",
+            }),
+            ("🗺️ Routing", {
+                "🗺️ Routing BGP": "BGP", "🗺️ Routing Generic & OSPF & ISIS": "Routing_Generic",
+                "🔀 AVT & BFD": "AVT_BFD", "🛤️ Path Selection & Profiles": "Path_Profiles",
+            }),
+            ("🛠️ Services & Management", {
+                "⏱️ PTP": "PTP", "🖥️ CVX": "CVX", "🖧 SNMP": "SNMP", "🛠️ Services": "Services",
+                "💿 Software": "Software", "🌊 Flow Tracking & GreenT": "Flow_GreenT",
+                "📊 LANZ & Logging": "Logging", "📞 STUN": "STUN",
+            }),
+            ("🧩 Custom", {"🧩 Custom YAML": "Custom"}),
+        ]
+        categories_map = {label: cat_id for _, items in CATEGORY_GROUPS for label, cat_id in items.items()}
+        label_by_cat = {cat_id: label for label, cat_id in categories_map.items()}
+
+        if "selected_cat" not in st.session_state:
+            st.session_state["selected_cat"] = "AAA"
+        selected_cat = st.session_state["selected_cat"]
+
+        for group_title, group_items in CATEGORY_GROUPS:
+            with st.expander(group_title, expanded=(selected_cat in group_items.values())):
+                for label, cat_id in group_items.items():
+                    if st.button(
+                        label,
+                        key=f"navbtn_{cat_id}",
+                        use_container_width=True,
+                        type="primary" if cat_id == selected_cat else "secondary",
+                    ):
+                        st.session_state["selected_cat"] = cat_id
+                        st.rerun()
+
+        selected_cat = st.session_state["selected_cat"]
+        selected_cat_label = label_by_cat[selected_cat]
 
     with main_content_col:
         header_col, toggle_col = st.columns([3, 1])
