@@ -8,10 +8,16 @@ import re
 import uuid
 import fcntl
 from contextlib import contextmanager
+from importlib.metadata import version as pkg_version, PackageNotFoundError
 from anta.catalog import AntaCatalog
 
 NRFU_SUBPROCESS_TIMEOUT = 600
 CLI_SUBPROCESS_TIMEOUT = 60
+
+try:
+    ANTA_VERSION = pkg_version("anta")
+except PackageNotFoundError:
+    ANTA_VERSION = "unknown"
 
 # Configure the web page layout
 st.set_page_config(page_title="ANTA Dashboard", layout="wide", initial_sidebar_state="expanded")
@@ -236,11 +242,14 @@ with st.sidebar:
     select_label = "❌ Deselect All Tests" if is_all_selected else "✅ Select All Tests"
     st.button(select_label, on_click=toggle_select_all, use_container_width=True)
 
+    st.markdown("---")
+    st.caption(f"Built on Arista ANTA v{ANTA_VERSION}")
+
 # ==========================================
 # MAIN APP HEADER & TABS
 # ==========================================
 st.title("🚀 Arista ANTA Web GUI")
-st.markdown("Manage devices, configure tests, and execute network validations.")
+st.markdown(f"Manage devices, configure tests, and execute network validations. *(Built on Arista ANTA v{ANTA_VERSION})*")
 st.divider()
 
 tab_dashboard, tab_creds, tab_inventory, tab_catalog, tab_cli = st.tabs([

@@ -1,6 +1,6 @@
 FROM python:3.11-slim
 
-RUN pip install --no-cache-dir --upgrade "anta[cli]" streamlit pandas pyyaml
+RUN pip install --no-cache-dir "anta[cli]==1.10.0" streamlit pandas pyyaml
 
 RUN useradd --create-home --shell /bin/bash appuser
 
