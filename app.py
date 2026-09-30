@@ -276,7 +276,7 @@ def update_test_state(key):
 with st.sidebar:
     st.title("⚙️ Profile & Settings")
     st.caption("Manage active presets & execution tags")
-    st.info(f"🔒 **Private to this browser:** there are no user accounts — everything saved below is tied to a private ID stored in this browser's cookies (`...{CLIENT_ID[-8:]}`), so other people using this app from a different browser or computer can't see or overwrite it. Clearing cookies or switching browsers starts fresh.", icon="ℹ️")
+    st.caption(f"🔒 Settings below are private to this browser (id `...{CLIENT_ID[-8:]}`), not shared with other users.")
 
     st.markdown("---")
     st.markdown("##### 🎯 Active Profile Presets")
