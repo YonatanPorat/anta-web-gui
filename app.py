@@ -237,7 +237,8 @@ def update_test_state(key):
 with st.sidebar:
     st.title("⚙️ Profile & Settings")
     st.caption("Manage active presets & execution tags")
-    
+    st.info("🌍 **Shared, not personal:** there are no user accounts here. Everything saved below (profiles, default credentials) is written to one `settings.json` on the server and is visible/editable by **every** person using this app — regardless of which computer they connect from.", icon="ℹ️")
+
     st.markdown("---")
     st.markdown("##### 🎯 Active Profile Presets")
     
@@ -305,15 +306,17 @@ tab_dashboard, tab_creds, tab_inventory, tab_catalog, tab_cli = st.tabs([
 # ==========================================
 with tab_creds:
     st.subheader("Device Credentials")
+    st.caption("These fields only affect your own browser session unless you click Save below.")
     if "anta_user" not in st.session_state: st.session_state.anta_user = saved_settings.get("anta_user", "arista")
     if "anta_pass" not in st.session_state: st.session_state.anta_pass = saved_settings.get("anta_pass", "arista")
-        
+
     st.session_state.anta_user = st.text_input("Username", value=st.session_state.anta_user, key="input_anta_user")
     st.session_state.anta_pass = st.text_input("Password", value=st.session_state.anta_pass, type="password", key="input_anta_pass")
-    
+
     if st.button("💾 Save as Default Credentials", type="primary"):
         save_settings({"anta_user": st.session_state.anta_user, "anta_pass": st.session_state.anta_pass})
         st.success("✅ Credentials saved!")
+    st.warning("⚠️ This does not save credentials just for you. There are no per-user accounts on this server, so clicking Save overwrites the **one shared default** every visitor sees pre-filled here, no matter which computer they connect from.", icon="⚠️")
 
 # ==========================================
 # TAB 2: INVENTORY
