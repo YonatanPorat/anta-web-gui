@@ -1508,10 +1508,15 @@ with tab_catalog:
                     "messages": [full_error_text]
                 })
 
-    # Save to session_state so each user session has its own catalog dictionary
+    # Save to session_state so each user session has its own catalog dictionary.
+    # Do NOT persist selected_test_keys to settings.json here: this block runs on
+    # every rerun (i.e. every click/keystroke from any user), and writing here would
+    # let one user's in-progress, unsaved selection silently overwrite the shared
+    # default that bootstraps every other user's next new session. Persisting the
+    # selection to disk is intentionally reserved for the explicit "Save" profile
+    # button in the sidebar.
     st.session_state["session_valid_catalog_dict"] = valid_catalog_dict
     st.session_state["invalid_config_results"] = invalid_config_results
-    save_settings({"selected_test_keys": [k for k in ALL_TEST_KEYS if st.session_state["master_test_states"].get(k, False)]})
 
 # ==========================================
 # TAB 4: DASHBOARD (Runner - Isolated Execution)
