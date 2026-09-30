@@ -7,9 +7,13 @@ RUN useradd --create-home --shell /bin/bash appuser
 WORKDIR /app
 
 COPY inventory.yml entrypoint.sh app.py ./
-RUN chmod +x entrypoint.sh && chown -R appuser:appuser /app
+RUN mkdir -p /app/data && chmod +x entrypoint.sh && chown -R appuser:appuser /app
 
 USER appuser
+
+# Mount a volume here (see restart.sh) so settings.json survives container
+# rebuilds/redeploys instead of resetting to defaults every time.
+VOLUME ["/app/data"]
 
 EXPOSE 8501
 

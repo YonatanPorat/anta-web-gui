@@ -46,7 +46,13 @@ def _atomic_write(path, write_fn):
     os.replace(tmp_path, path)
 
 # --- Persistent Settings Helper ---
-SETTINGS_FILE = "settings.json"
+# Lives under a dedicated directory so it can be mounted as a single Docker
+# volume: the settings file, its .lock sidecar, and its .tmp.<uuid> atomic-write
+# staging file all end up on the same filesystem, which os.replace() requires
+# (rename fails with "Invalid cross-device link" across different mounts).
+SETTINGS_DIR = os.environ.get("ANTA_DATA_DIR", "data")
+os.makedirs(SETTINGS_DIR, exist_ok=True)
+SETTINGS_FILE = os.path.join(SETTINGS_DIR, "settings.json")
 
 def load_settings():
     with locked_file(SETTINGS_FILE):
