@@ -148,7 +148,14 @@ ALL_TEST_KEYS = [
     "chk_sys_maintenance", "chk_sys_mem", "chk_sys_ntp", "chk_sys_ntp_assoc", "chk_sys_reload", "chk_sys_uptime",
     # VLAN & VXLAN
     "chk_vlan_dynamic", "chk_vlan_internal", "chk_vlan_status",
-    "chk_vxlan_conn", "chk_vxlan_intf", "chk_vxlan_vvtep", "chk_vxlan_sanity", "chk_vxlan_vni_binding", "chk_vxlan_vtep"
+    "chk_vxlan_conn", "chk_vxlan_intf", "chk_vxlan_vvtep", "chk_vxlan_sanity", "chk_vxlan_vni_binding", "chk_vxlan_vtep",
+    # Security Advisories (new in ANTA 1.10.0)
+    "chk_adv_sa117", "chk_adv_sa140", "chk_adv_sa142", "chk_adv_sa146", "chk_adv_sa147", "chk_adv_sa149",
+    "chk_adv_sa150", "chk_adv_sa151", "chk_adv_sa152", "chk_adv_sa153", "chk_adv_sa154", "chk_adv_sa155",
+    "chk_adv_sa156", "chk_adv_sa157", "chk_adv_sa158", "chk_adv_sa159", "chk_adv_sa160", "chk_adv_sa161",
+    "chk_adv_sa162", "chk_adv_sa163", "chk_adv_sa164", "chk_adv_sa165", "chk_adv_sa166", "chk_adv_sa167",
+    "chk_adv_sa168", "chk_adv_sa169", "chk_adv_sa170", "chk_adv_sa171", "chk_adv_sa172", "chk_adv_sa173",
+    "chk_adv_sa174", "chk_adv_sa175", "chk_adv_sa176", "chk_adv_sa177", "chk_adv_sa178",
 ]
 
 default_config_rules = [
@@ -315,7 +322,8 @@ with tab_catalog:
             "🌐 Interfaces": "Interfaces", "📊 LANZ & Logging": "Logging", "🤝 MLAG & Multicast": "MLAG_Multicast",
             "🛤️ Path Selection & Profiles": "Path_Profiles", "⏱️ PTP": "PTP", "🗺️ Routing BGP": "BGP",
             "🗺️ Routing Generic & OSPF & ISIS": "Routing_Generic", "🔒 Security": "Security", "🛠️ Services": "Services",
-            "🖧 SNMP": "SNMP", "💿 Software": "Software", "🛡️ STP": "STP", "📞 STUN": "STUN", "💻 System": "System", "🏢 VLAN": "VLAN", "🧩 Custom YAML": "Custom"
+            "🖧 SNMP": "SNMP", "💿 Software": "Software", "🛡️ STP": "STP", "📞 STUN": "STUN", "💻 System": "System", "🏢 VLAN": "VLAN",
+            "🚨 Security Advisories": "Advisories", "🧩 Custom YAML": "Custom"
         }
         selected_cat_label = st.radio("Select Category", options=list(categories_map.keys()), label_visibility="collapsed")
         selected_cat = categories_map[selected_cat_label]
@@ -1008,6 +1016,44 @@ with tab_catalog:
             if st.session_state["master_test_states"].get("chk_vlan_status"):
                 render_list_editor("VLANs", "param_vlan_status_list", [{'vlan_id': 10, 'status': 'active'}])
 
+        elif selected_cat == "Advisories":
+            st.caption("New in ANTA 1.10.0 — checks whether the device is impacted by a given Arista Security Advisory. No parameters required.")
+            bind_cb("Verify Security Advisory 0117 - CVE-2025-0936 (`SA117`)", "chk_adv_sa117")
+            bind_cb("Verify Security Advisory 0140 - CVE-2026-10040 (`SA140`)", "chk_adv_sa140")
+            bind_cb("Verify Security Advisory 0142 - CVE-2026-12546 (`SA142`)", "chk_adv_sa142")
+            bind_cb("Verify Security Advisory 0146 (`SA146`)", "chk_adv_sa146")
+            bind_cb("Verify Security Advisory 0147 - CVE-2026-59995/59996/60001/60002 (`SA147`)", "chk_adv_sa147")
+            bind_cb("Verify Security Advisory 0149 - CVE-2026-73449 (`SA149`)", "chk_adv_sa149")
+            bind_cb("Verify Security Advisory 0150 - CVE-2026-75943/75944/75945/77191 (`SA150`)", "chk_adv_sa150")
+            bind_cb("Verify Security Advisory 0151 - CVE-2026-73451 (`SA151`)", "chk_adv_sa151")
+            bind_cb("Verify Security Advisory 0152 - CVE-2026-19641 (`SA152`)", "chk_adv_sa152")
+            bind_cb("Verify Security Advisory 0153 - CVE-2026-73465/73466/73467 (`SA153`)", "chk_adv_sa153")
+            bind_cb("Verify Security Advisory 0154 - CVE-2026-73458 (`SA154`)", "chk_adv_sa154")
+            bind_cb("Verify Security Advisory 0155 - CVE-2026-19655 (`SA155`)", "chk_adv_sa155")
+            bind_cb("Verify Security Advisory 0156 - CVE-2026-73437 (`SA156`)", "chk_adv_sa156")
+            bind_cb("Verify Security Advisory 0157 - CVE-2026-73442/73443/73444 (`SA157`)", "chk_adv_sa157")
+            bind_cb("Verify Security Advisory 0158 - CVE-2026-73456/73457 (`SA158`)", "chk_adv_sa158")
+            bind_cb("Verify Security Advisory 0159 - CVE-2026-73462 (`SA159`)", "chk_adv_sa159")
+            bind_cb("Verify Security Advisory 0160 - CVE-2026-73446/73459/73460 (`SA160`)", "chk_adv_sa160")
+            bind_cb("Verify Security Advisory 0161 - CVE-2026-73450 (`SA161`)", "chk_adv_sa161")
+            bind_cb("Verify Security Advisory 0162 - CVE-2026-73447 (`SA162`)", "chk_adv_sa162")
+            bind_cb("Verify Security Advisory 0163 - CVE-2026-73461 (`SA163`)", "chk_adv_sa163")
+            bind_cb("Verify Security Advisory 0164 - CVE-2026-73439 (`SA164`)", "chk_adv_sa164")
+            bind_cb("Verify Security Advisory 0165 - CVE-2026-73454 (`SA165`)", "chk_adv_sa165")
+            bind_cb("Verify Security Advisory 0166 - CVE-2026-73464 (`SA166`)", "chk_adv_sa166")
+            bind_cb("Verify Security Advisory 0167 - CVE-2026-73445 (`SA167`)", "chk_adv_sa167")
+            bind_cb("Verify Security Advisory 0168 - CVE-2026-2380 (`SA168`)", "chk_adv_sa168")
+            bind_cb("Verify Security Advisory 0169 - CVE-2026-73463 (`SA169`)", "chk_adv_sa169")
+            bind_cb("Verify Security Advisory 0170 - CVE-2026-19640 (`SA170`)", "chk_adv_sa170")
+            bind_cb("Verify Security Advisory 0171 - CVE-2026-73435/73436 (`SA171`)", "chk_adv_sa171")
+            bind_cb("Verify Security Advisory 0172 - CVE-2026-73438 (`SA172`)", "chk_adv_sa172")
+            bind_cb("Verify Security Advisory 0173 - CVE-2026-73455 (`SA173`)", "chk_adv_sa173")
+            bind_cb("Verify Security Advisory 0174 - CVE-2026-73453 (`SA174`)", "chk_adv_sa174")
+            bind_cb("Verify Security Advisory 0175 - CVE-2026-73468 (`SA175`)", "chk_adv_sa175")
+            bind_cb("Verify Security Advisory 0176 - CVE-2026-73469 (`SA176`)", "chk_adv_sa176")
+            bind_cb("Verify Security Advisory 0177 - CVE-2026-77190 (`SA177`)", "chk_adv_sa177")
+            bind_cb("Verify Security Advisory 0178 - CVE-2026-73440 (`SA178`)", "chk_adv_sa178")
+
         elif selected_cat == "Custom":
             st.text_area("Custom YAML Input", value=st.session_state.get("param_custom_yaml", "# anta.tests...\n"), height=250, key="param_custom_yaml")
 
@@ -1307,6 +1353,42 @@ with tab_catalog:
         "chk_vxlan_vvtep": ("anta.tests.vxlan", "VerifyVxlan1VVTEPIPAddresses", {"ipv4_address": st.session_state.get("param_vxlan_vvtep_v4", "10.255.1.1") or None, "ipv6_address": st.session_state.get("param_vxlan_vvtep_v6", "") or None}),
         "chk_bgp_peer_route_limit": ("anta.tests.routing.bgp", "VerifyBGPPeerRouteLimit", {"bgp_peers": st.session_state.get("data_param_bgp_routelimit_peers", [{'peer_address': '10.0.0.2', 'vrf': 'default', 'maximum_routes': 12000, 'warning_limit': 10000}])}),
         "chk_vlan_status": ("anta.tests.vlan", "VerifyVlanStatus", {"vlans": st.session_state.get("data_param_vlan_status_list", [{'vlan_id': 10, 'status': 'active'}])}),
+
+        "chk_adv_sa117": ("anta.tests.advisories", "SA117", None),
+        "chk_adv_sa140": ("anta.tests.advisories", "SA140", None),
+        "chk_adv_sa142": ("anta.tests.advisories", "SA142", None),
+        "chk_adv_sa146": ("anta.tests.advisories", "SA146", None),
+        "chk_adv_sa147": ("anta.tests.advisories", "SA147", None),
+        "chk_adv_sa149": ("anta.tests.advisories", "SA149", None),
+        "chk_adv_sa150": ("anta.tests.advisories", "SA150", None),
+        "chk_adv_sa151": ("anta.tests.advisories", "SA151", None),
+        "chk_adv_sa152": ("anta.tests.advisories", "SA152", None),
+        "chk_adv_sa153": ("anta.tests.advisories", "SA153", None),
+        "chk_adv_sa154": ("anta.tests.advisories", "SA154", None),
+        "chk_adv_sa155": ("anta.tests.advisories", "SA155", None),
+        "chk_adv_sa156": ("anta.tests.advisories", "SA156", None),
+        "chk_adv_sa157": ("anta.tests.advisories", "SA157", None),
+        "chk_adv_sa158": ("anta.tests.advisories", "SA158", None),
+        "chk_adv_sa159": ("anta.tests.advisories", "SA159", None),
+        "chk_adv_sa160": ("anta.tests.advisories", "SA160", None),
+        "chk_adv_sa161": ("anta.tests.advisories", "SA161", None),
+        "chk_adv_sa162": ("anta.tests.advisories", "SA162", None),
+        "chk_adv_sa163": ("anta.tests.advisories", "SA163", None),
+        "chk_adv_sa164": ("anta.tests.advisories", "SA164", None),
+        "chk_adv_sa165": ("anta.tests.advisories", "SA165", None),
+        "chk_adv_sa166": ("anta.tests.advisories", "SA166", None),
+        "chk_adv_sa167": ("anta.tests.advisories", "SA167", None),
+        "chk_adv_sa168": ("anta.tests.advisories", "SA168", None),
+        "chk_adv_sa169": ("anta.tests.advisories", "SA169", None),
+        "chk_adv_sa170": ("anta.tests.advisories", "SA170", None),
+        "chk_adv_sa171": ("anta.tests.advisories", "SA171", None),
+        "chk_adv_sa172": ("anta.tests.advisories", "SA172", None),
+        "chk_adv_sa173": ("anta.tests.advisories", "SA173", None),
+        "chk_adv_sa174": ("anta.tests.advisories", "SA174", None),
+        "chk_adv_sa175": ("anta.tests.advisories", "SA175", None),
+        "chk_adv_sa176": ("anta.tests.advisories", "SA176", None),
+        "chk_adv_sa177": ("anta.tests.advisories", "SA177", None),
+        "chk_adv_sa178": ("anta.tests.advisories", "SA178", None),
     }
 
     # Map dynamic config rules if box is ticked
