@@ -276,7 +276,6 @@ def update_test_state(key):
 with st.sidebar:
     st.title("⚙️ Profile & Settings")
     st.caption("Manage active presets & execution tags")
-    st.caption(f"🔒 Settings below are private to this browser (id `...{CLIENT_ID[-8:]}`), not shared with other users.")
 
     st.markdown("---")
     st.markdown("##### 🎯 Active Profile Presets")
@@ -395,14 +394,24 @@ with tab_catalog:
     with nav_side_col:
         st.markdown("#### 📂 Categories")
         categories_map = {
-            "🔐 AAA": "AAA", "🔀 AVT & BFD": "AVT_BFD", "⚙️ Configuration": "Configuration",
-            "🌐 Connectivity": "Connectivity", "🖥️ CVX": "CVX", "☁️ EVPN & VXLAN": "EVPN_VXLAN",
-            "⚠️ Field Notices": "FieldNotices", "🌊 Flow Tracking & GreenT": "Flow_GreenT", "🔌 Hardware": "Hardware",
-            "🌐 Interfaces": "Interfaces", "📊 LANZ & Logging": "Logging", "🤝 MLAG & Multicast": "MLAG_Multicast",
-            "🛤️ Path Selection & Profiles": "Path_Profiles", "⏱️ PTP": "PTP", "🗺️ Routing BGP": "BGP",
-            "🗺️ Routing Generic & OSPF & ISIS": "Routing_Generic", "🔒 Security": "Security", "🛠️ Services": "Services",
-            "🖧 SNMP": "SNMP", "💿 Software": "Software", "🛡️ STP": "STP", "📞 STUN": "STUN", "💻 System": "System", "🏢 VLAN": "VLAN",
-            "🚨 Security Advisories": "Advisories", "🧩 Custom YAML": "Custom"
+            # Security & compliance posture
+            "🔐 AAA": "AAA", "🔒 Security": "Security", "🚨 Security Advisories": "Advisories",
+            "⚠️ Field Notices": "FieldNotices", "💿 Software": "Software",
+            # Device health
+            "🔌 Hardware": "Hardware", "💻 System": "System",
+            # Core L2/L1 fundamentals
+            "🌐 Interfaces": "Interfaces", "🌐 Connectivity": "Connectivity", "🏢 VLAN": "VLAN", "🛡️ STP": "STP",
+            # L2/L3 overlay & multi-chassis
+            "🤝 MLAG & Multicast": "MLAG_Multicast", "☁️ EVPN & VXLAN": "EVPN_VXLAN",
+            # Routing
+            "🗺️ Routing BGP": "BGP", "🗺️ Routing Generic & OSPF & ISIS": "Routing_Generic",
+            "🔀 AVT & BFD": "AVT_BFD", "🛤️ Path Selection & Profiles": "Path_Profiles",
+            # Services & management
+            "⏱️ PTP": "PTP", "🖥️ CVX": "CVX", "🖧 SNMP": "SNMP", "🛠️ Services": "Services",
+            "🌊 Flow Tracking & GreenT": "Flow_GreenT", "📊 LANZ & Logging": "Logging", "📞 STUN": "STUN",
+            "⚙️ Configuration": "Configuration",
+            # Freeform
+            "🧩 Custom YAML": "Custom",
         }
         selected_cat_label = st.radio("Select Category", options=list(categories_map.keys()), label_visibility="collapsed")
         selected_cat = categories_map[selected_cat_label]
