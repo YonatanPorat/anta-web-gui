@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import subprocess
 import json
 import pandas as pd
@@ -22,10 +23,36 @@ except PackageNotFoundError:
 # Configure the web page layout
 st.set_page_config(page_title="ANTA Dashboard", layout="wide", initial_sidebar_state="expanded")
 
+# --- Per-browser identity ---
+# There are no user accounts. To keep one person's saved settings from
+# overwriting another's, every browser is assigned a random ID on first visit,
+# persisted in a long-lived cookie (not tied to IP or hostname, so it survives
+# across networks but is scoped to this one browser). All saved state below is
+# stored under a directory keyed by that ID, so two different browsers/computers
+# never share a settings/inventory file, even against the same server.
+CLIENT_ID_COOKIE = "anta_client_id"
+
+def get_client_id():
+    existing = st.context.cookies.get(CLIENT_ID_COOKIE)
+    if existing:
+        return existing
+    new_id = uuid.uuid4().hex
+    components.html(
+        f"""<script>
+        document.cookie = "{CLIENT_ID_COOKIE}={new_id}; path=/; max-age=31536000; SameSite=Lax";
+        window.top.location.reload();
+        </script>""",
+        height=0,
+    )
+    st.stop()
+
+CLIENT_ID = get_client_id()
+
 # --- Cross-session file locking ---
-# Concurrent users share settings.json/inventory.yml on disk; without a lock,
-# overlapping read-modify-write cycles silently drop each other's changes or
-# hand back a partially-written file to a concurrent reader.
+# Concurrent users each get their own settings.json/inventory.yml (keyed by
+# CLIENT_ID) on disk; without a lock, overlapping read-modify-write cycles
+# from the same browser open in two tabs could still drop changes or hand
+# back a partially-written file to a concurrent reader.
 @contextmanager
 def locked_file(path):
     lock_path = f"{path}.lock"
@@ -46,11 +73,13 @@ def _atomic_write(path, write_fn):
     os.replace(tmp_path, path)
 
 # --- Persistent Settings Helper ---
-# Lives under a dedicated directory so it can be mounted as a single Docker
-# volume: the settings file, its .lock sidecar, and its .tmp.<uuid> atomic-write
-# staging file all end up on the same filesystem, which os.replace() requires
-# (rename fails with "Invalid cross-device link" across different mounts).
-SETTINGS_DIR = os.environ.get("ANTA_DATA_DIR", "data")
+# Lives under a per-CLIENT_ID directory so it can be mounted as a single Docker
+# volume (covering every browser's data at once): the settings file, its .lock
+# sidecar, and its .tmp.<uuid> atomic-write staging file all end up on the same
+# filesystem, which os.replace() requires (rename fails with "Invalid
+# cross-device link" across different mounts).
+DATA_ROOT = os.environ.get("ANTA_DATA_DIR", "data")
+SETTINGS_DIR = os.path.join(DATA_ROOT, "users", CLIENT_ID)
 os.makedirs(SETTINGS_DIR, exist_ok=True)
 SETTINGS_FILE = os.path.join(SETTINGS_DIR, "settings.json")
 
@@ -77,7 +106,12 @@ def save_settings(data_dict):
         _atomic_write(SETTINGS_FILE, lambda f: json.dump(current, f, indent=4))
 
 # --- Persistent Inventory Helper ---
-INVENTORY_FILE = "inventory.yml"
+# Each browser gets its own inventory.yml. A brand-new browser has none yet,
+# so it falls back to the read-only sample template shipped in the image
+# (DEFAULT_INVENTORY_TEMPLATE) purely to seed the UI with example rows; that
+# template is never written to.
+DEFAULT_INVENTORY_TEMPLATE = "inventory.yml"
+INVENTORY_FILE = os.path.join(SETTINGS_DIR, "inventory.yml")
 
 def load_inventory():
     with locked_file(INVENTORY_FILE):
@@ -85,7 +119,12 @@ def load_inventory():
             with open(INVENTORY_FILE, "r") as f:
                 return yaml.safe_load(f) or {}
         except FileNotFoundError:
-            return {}
+            pass
+    try:
+        with open(DEFAULT_INVENTORY_TEMPLATE, "r") as f:
+            return yaml.safe_load(f) or {}
+    except FileNotFoundError:
+        return {}
 
 def save_inventory(inv_payload):
     with locked_file(INVENTORY_FILE):
@@ -237,7 +276,7 @@ def update_test_state(key):
 with st.sidebar:
     st.title("⚙️ Profile & Settings")
     st.caption("Manage active presets & execution tags")
-    st.info("🌍 **Shared, not personal:** there are no user accounts here. Everything saved below (profiles, default credentials) is written to one `settings.json` on the server and is visible/editable by **every** person using this app — regardless of which computer they connect from.", icon="ℹ️")
+    st.info(f"🔒 **Private to this browser:** there are no user accounts — everything saved below is tied to a private ID stored in this browser's cookies (`...{CLIENT_ID[-8:]}`), so other people using this app from a different browser or computer can't see or overwrite it. Clearing cookies or switching browsers starts fresh.", icon="ℹ️")
 
     st.markdown("---")
     st.markdown("##### 🎯 Active Profile Presets")
@@ -316,7 +355,7 @@ with tab_creds:
     if st.button("💾 Save as Default Credentials", type="primary"):
         save_settings({"anta_user": st.session_state.anta_user, "anta_pass": st.session_state.anta_pass})
         st.success("✅ Credentials saved!")
-    st.warning("⚠️ This does not save credentials just for you. There are no per-user accounts on this server, so clicking Save overwrites the **one shared default** every visitor sees pre-filled here, no matter which computer they connect from.", icon="⚠️")
+    st.caption("🔒 Saved credentials are private to this browser (see the sidebar) — other people using this app from a different browser or computer won't see or affect them.")
 
 # ==========================================
 # TAB 2: INVENTORY

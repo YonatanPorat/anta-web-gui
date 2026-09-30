@@ -11,7 +11,8 @@ RUN mkdir -p /app/data && chmod +x entrypoint.sh && chown -R appuser:appuser /ap
 
 USER appuser
 
-# Mount a volume here (see restart.sh) so settings.json survives container
+# Mount a volume here (see restart.sh) so each browser's private
+# settings.json/inventory.yml (under data/users/<id>/) survives container
 # rebuilds/redeploys instead of resetting to defaults every time.
 VOLUME ["/app/data"]
 
