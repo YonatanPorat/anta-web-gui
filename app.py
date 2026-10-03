@@ -403,11 +403,7 @@ with tab_catalog:
             ("⚙️ Configuration", {"⚙️ Configuration": "Configuration"}),
             ("🌐 Core Networking", {
                 "🌐 Interfaces": "Interfaces", "🌐 Connectivity": "Connectivity", "🏢 VLAN": "VLAN", "🛡️ STP": "STP",
-            }),
-            ("🤝 Overlay & Multi-chassis", {
                 "🤝 MLAG & Multicast": "MLAG_Multicast", "☁️ EVPN & VXLAN": "EVPN_VXLAN",
-            }),
-            ("🗺️ Routing", {
                 "🗺️ Routing BGP": "BGP", "🗺️ Routing Generic & OSPF & ISIS": "Routing_Generic",
                 "🔀 AVT & BFD": "AVT_BFD", "🛤️ Path Selection & Profiles": "Path_Profiles",
             }),
