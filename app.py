@@ -420,22 +420,37 @@ with tab_catalog:
         ]
         categories_map = {label: cat_id for _, items in CATEGORY_GROUPS for label, cat_id in items.items()}
         label_by_cat = {cat_id: label for label, cat_id in categories_map.items()}
+        GROUP_RADIO_KEYS = [f"navradio_{title}" for title, _ in CATEGORY_GROUPS]
 
         if "selected_cat" not in st.session_state:
             st.session_state["selected_cat"] = "AAA"
-        selected_cat = st.session_state["selected_cat"]
 
-        for group_title, group_items in CATEGORY_GROUPS:
-            with st.expander(group_title, expanded=(selected_cat in group_items.values())):
-                for label, cat_id in group_items.items():
-                    if st.button(
-                        label,
-                        key=f"navbtn_{cat_id}",
-                        use_container_width=True,
-                        type="primary" if cat_id == selected_cat else "secondary",
-                    ):
-                        st.session_state["selected_cat"] = cat_id
-                        st.rerun()
+        # Each group gets its own plain radio (so only one group's dot is ever
+        # filled in, matching the look of the old single flat radio); picking an
+        # option in one group clears the others via the callback below so the
+        # whole nav still behaves like one shared single-select list.
+        def on_group_radio_change(radio_key, group_items):
+            chosen_label = st.session_state[radio_key]
+            if chosen_label is None:
+                return
+            st.session_state["selected_cat"] = group_items[chosen_label]
+            for other_key in GROUP_RADIO_KEYS:
+                if other_key != radio_key:
+                    st.session_state[other_key] = None
+
+        for (group_title, group_items), radio_key in zip(CATEGORY_GROUPS, GROUP_RADIO_KEYS):
+            if radio_key not in st.session_state:
+                ids = list(group_items.values())
+                st.session_state[radio_key] = (
+                    list(group_items.keys())[ids.index(st.session_state["selected_cat"])]
+                    if st.session_state["selected_cat"] in ids else None
+                )
+            st.markdown(f"**{group_title}**")
+            st.radio(
+                group_title, list(group_items.keys()), key=radio_key,
+                label_visibility="collapsed",
+                on_change=on_group_radio_change, args=(radio_key, group_items),
+            )
 
         selected_cat = st.session_state["selected_cat"]
         selected_cat_label = label_by_cat[selected_cat]
