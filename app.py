@@ -421,34 +421,38 @@ with tab_catalog:
         if "selected_cat" not in st.session_state:
             st.session_state["selected_cat"] = "AAA"
 
-        # Each group gets its own dropdown instead of a radio list, so the whole
-        # nav stays short (one line per group) even with ~10 options in a group -
-        # a tall radio list meant scrolling down to pick a category pushed the
-        # actual test checkboxes on the right out of view. Only one group's
-        # dropdown is ever non-empty; picking an option in one group clears the
-        # others via the callback below so the nav still behaves like one shared
-        # single-select list.
-        def on_group_select_change(select_key, group_items):
-            chosen_label = st.session_state[select_key]
+        # Each group gets its own plain radio (all options visible at once, no
+        # extra click to open a dropdown); picking an option in one group clears
+        # the others via the callback below so the nav still behaves like one
+        # shared single-select list. The group title doubles as the radio's own
+        # (markdown-rendered) label instead of a separate st.markdown line above
+        # it, and the CSS below tightens the gaps between groups - both just to
+        # keep the whole nav compact.
+        st.markdown(
+            "<style>div[data-testid='stRadio']{margin-bottom:-0.8rem;} "
+            "div[data-testid='stRadio'] label{padding-bottom:0.1rem;}</style>",
+            unsafe_allow_html=True,
+        )
+
+        def on_group_radio_change(radio_key, group_items):
+            chosen_label = st.session_state[radio_key]
             if chosen_label is None:
                 return
             st.session_state["selected_cat"] = group_items[chosen_label]
             for other_key in GROUP_RADIO_KEYS:
-                if other_key != select_key:
+                if other_key != radio_key:
                     st.session_state[other_key] = None
 
-        for (group_title, group_items), select_key in zip(CATEGORY_GROUPS, GROUP_RADIO_KEYS):
-            if select_key not in st.session_state:
+        for (group_title, group_items), radio_key in zip(CATEGORY_GROUPS, GROUP_RADIO_KEYS):
+            if radio_key not in st.session_state:
                 ids = list(group_items.values())
-                st.session_state[select_key] = (
+                st.session_state[radio_key] = (
                     list(group_items.keys())[ids.index(st.session_state["selected_cat"])]
                     if st.session_state["selected_cat"] in ids else None
                 )
-            st.markdown(f"**{group_title}**")
-            st.selectbox(
-                group_title, list(group_items.keys()), key=select_key,
-                label_visibility="collapsed", placeholder="—",
-                on_change=on_group_select_change, args=(select_key, group_items),
+            st.radio(
+                f"**{group_title}**", list(group_items.keys()), key=radio_key,
+                on_change=on_group_radio_change, args=(radio_key, group_items),
             )
 
         selected_cat = st.session_state["selected_cat"]
