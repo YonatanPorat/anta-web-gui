@@ -1845,7 +1845,7 @@ with tab_cli:
                 exec_cmd = [
                     "anta", "debug", "run-cmd",
                     "--command", cmd_input,
-                    "--inventory", "inventory.yml",
+                    "--inventory", INVENTORY_FILE,
                     "--device", selected_device_id
                 ]
 
