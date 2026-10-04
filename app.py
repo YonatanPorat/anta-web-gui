@@ -308,7 +308,11 @@ with st.sidebar:
 
     st.markdown("---")
     st.markdown("##### 🏷️ Filter Tags")
-    st.text_input("Filter Tags (comma-separated)", value=saved_settings.get("catalog_tags", ""), placeholder="e.g. leaf, demo", key="input_catalog_tags")
+    st.text_input(
+        "Filter Tags (comma-separated)", value=saved_settings.get("catalog_tags", ""),
+        placeholder="e.g. leaf, demo", key="input_catalog_tags",
+        help="Tags tests in the catalog AND filters test execution to matching devices. A device must have a tag entered here in its Manage Inventory 'tags' column, or no test will run against it when a tag is set.",
+    )
 
     st.markdown("---")
     selected_count = sum(1 for k in ALL_TEST_KEYS if st.session_state["master_test_states"].get(k, False))
@@ -361,6 +365,7 @@ with tab_creds:
 # ==========================================
 with tab_inventory:
     st.subheader("Inventory Manager")
+    st.caption("🔒 This inventory is private to this browser (see the sidebar) — other people using this app from a different browser or computer have their own, separate inventory.")
     inv_data = load_inventory()
 
     anta_inv = inv_data.get("anta_inventory", {})
@@ -373,7 +378,7 @@ with tab_inventory:
     with sub_networks: edited_networks = st.data_editor(df_networks, num_rows="dynamic", use_container_width=True, key="editor_networks")
     with sub_ranges: edited_ranges = st.data_editor(df_ranges, num_rows="dynamic", use_container_width=True, key="editor_ranges")
 
-    if st.button("💾 Save Default Inventory.yml", type="primary"):
+    if st.button("💾 Save Inventory", type="primary"):
         inv_payload = {
             "anta_inventory": {
                 "hosts": edited_hosts.dropna(how="all").to_dict("records"),
@@ -1627,12 +1632,18 @@ with tab_dashboard:
     selected_run_count = sum(1 for k in ALL_TEST_KEYS if st.session_state["master_test_states"].get(k, False))
     st.info(f"⚡ **Ready to execute {selected_run_count} selected test(s)** on configured inventory devices.")
 
-    run_tags_input = st.text_input(
-        "🏷️ Filter NRFU Execution by Tags (Optional CLI Filter)", 
-        placeholder="e.g. leaf, spine",
-        key="input_run_tags",
-        help="Applies '--tags' to the CLI execution to run tests only on devices/tests with matching tags."
-    )
+    # Reuse the sidebar's "Filter Tags" value instead of a separate input here.
+    # ANTA's `--tags` filter at execution time requires devices AND catalog
+    # tests to share the same tag (set intersection on both sides) - the
+    # catalog is only tagged via the sidebar field, so a *different* value
+    # typed here would silently match zero tests ("No tests scheduled to
+    # run"), which is exactly what used to happen when only this field was
+    # filled in.
+    run_tags_input = st.session_state.get("input_catalog_tags", "")
+    if run_tags_input.strip():
+        st.caption(f"🏷️ Execution filtered to tag(s): **{run_tags_input.strip()}** (set via \"Filter Tags\" in the sidebar).")
+    else:
+        st.caption("🏷️ No tag filter active - tests will run against all inventory devices. Set one via \"Filter Tags\" in the sidebar to scope both the catalog and the execution to matching devices.")
     
     if st.button("🚀 Execute Tests", type="primary", use_container_width=True):
         # Build an isolated env for this run's subprocess instead of mutating the
