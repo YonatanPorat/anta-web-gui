@@ -1668,6 +1668,7 @@ with tab_dashboard:
         run_id = str(uuid.uuid4())[:8]
         run_catalog_file = f"temp_catalog_{run_id}.yml"
         run_inventory_file = f"temp_inventory_{run_id}.yml"
+        run_output_file = f"temp_results_{run_id}.json"
 
         full_log = ""
         with st.spinner(f"Connecting to switches and running tests (Run ID: {run_id})... Please wait."):
@@ -1689,30 +1690,32 @@ with tab_dashboard:
                 cmd = ["anta", "nrfu"]
                 if run_tags_input.strip():
                     cmd.extend(["--tags", run_tags_input.strip()])
-                cmd.extend(["--inventory", run_inventory_file, "--catalog", run_catalog_file, "--ignore-status", "json"])
+                cmd.extend(["--inventory", run_inventory_file, "--catalog", run_catalog_file, "--ignore-status", "json", "--output", run_output_file])
 
                 result = subprocess.run(cmd, capture_output=True, text=True, env=run_env, timeout=NRFU_SUBPROCESS_TIMEOUT)
                 output = result.stdout
                 stderr_output = result.stderr or ""
-                
+
                 ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
                 output_clean = ansi_escape.sub('', output)
                 stderr_clean = ansi_escape.sub('', stderr_output)
                 full_log = output_clean + "\n" + stderr_clean
-                
-                json_raw_string = output_clean
-                if "JSON results" in output_clean:
-                    json_raw_string = output_clean.split("JSON results")[-1]
-                
-                start_idx = json_raw_string.find('[')
-                end_idx = json_raw_string.rfind(']')
-                
+
+                # Read the JSON results ANTA wrote directly to disk (via --output)
+                # rather than scraping them back out of the console transcript above:
+                # Rich's console.print_json() word-wraps long lines to a fixed
+                # terminal width when stdout isn't a real TTY (true for a piped
+                # subprocess), which can corrupt field values - e.g. a long
+                # device name or message - in ways that still parse as valid JSON
+                # but with wrong/missing data. The --output file is the same
+                # clean, unformatted serialization with none of that risk.
                 data = []
-                if start_idx != -1 and end_idx != -1:
+                if os.path.exists(run_output_file):
                     try:
-                        data = json.loads(json_raw_string[start_idx:end_idx+1])
-                    except json.JSONDecodeError:
-                        pass
+                        with open(run_output_file, "r") as f:
+                            data = json.load(f)
+                    except (json.JSONDecodeError, OSError):
+                        data = []
                 
                 invalid_pre_results = st.session_state.get("invalid_config_results", [])
                 
@@ -1767,12 +1770,17 @@ with tab_dashboard:
                     styled_df = df_display.drop(columns=['full_message']).style.map(color_result, subset=['result'])
                     st.dataframe(styled_df, use_container_width=True)
                     
-                    failed_df = df_display[df_display['result'].isin(['failure', 'error'])]
+                    failed_df = df_display[df_display['result'].isin(['failure', 'error'])].copy()
                     if not failed_df.empty:
                         st.divider()
                         st.subheader("🔍 Failed Tests Details (Grouped by Switch)")
                         st.markdown("Click on a switch below to expand and view all of its failing tests.")
-                        
+
+                        # pandas groupby silently drops rows whose key is NaN by default,
+                        # so any failure/error without a device name would vanish from this
+                        # section entirely while still counting toward the "Failed"/"Error"
+                        # totals above - fill it in so every row is shown somewhere.
+                        failed_df['name'] = failed_df['name'].fillna('(unknown device)')
                         grouped = failed_df.groupby('name')
                         for device_name, device_failures in grouped:
                             fail_count = len(device_failures)
@@ -1810,6 +1818,9 @@ with tab_dashboard:
                     except Exception: pass
                 if os.path.exists(run_inventory_file):
                     try: os.remove(run_inventory_file)
+                    except Exception: pass
+                if os.path.exists(run_output_file):
+                    try: os.remove(run_output_file)
                     except Exception: pass
 
 # ==========================================
