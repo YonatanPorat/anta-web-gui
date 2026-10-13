@@ -8,6 +8,7 @@ import os
 import re
 import uuid
 import fcntl
+import time
 from datetime import datetime, timezone
 from contextlib import contextmanager
 from importlib.metadata import version as pkg_version, PackageNotFoundError
@@ -1744,6 +1745,8 @@ with tab_dashboard:
         run_catalog_file = f"temp_catalog_{run_id}.yml"
         run_inventory_file = f"temp_inventory_{run_id}.yml"
         run_output_file = f"temp_results_{run_id}.json"
+        run_stdout_file = f"temp_stdout_{run_id}.log"
+        run_stderr_file = f"temp_stderr_{run_id}.log"
 
         log_event("nrfu_run", {
             "run_id": run_id,
@@ -1752,157 +1755,205 @@ with tab_dashboard:
         })
 
         full_log = ""
-        with st.spinner(f"Connecting to switches and running tests (Run ID: {run_id})... Please wait."):
+        status_placeholder = st.empty()
+        status_placeholder.info(f"⏳ Starting test run (Run ID: {run_id})...")
+        try:
+            # 1. Write unique catalog file for this execution run
+            valid_cat = st.session_state.get("session_valid_catalog_dict", {})
+            with open(run_catalog_file, "w") as f:
+                yaml.safe_dump(valid_cat, f, sort_keys=False)
+
+            # 2. Write unique inventory file for this execution run
             try:
-                # 1. Write unique catalog file for this execution run
-                valid_cat = st.session_state.get("session_valid_catalog_dict", {})
-                with open(run_catalog_file, "w") as f:
-                    yaml.safe_dump(valid_cat, f, sort_keys=False)
-                
-                # 2. Write unique inventory file for this execution run
-                try:
-                    inv_data = load_inventory()
-                except Exception:
-                    inv_data = {}
-                with open(run_inventory_file, "w") as f:
-                    yaml.safe_dump(inv_data, f, sort_keys=False)
+                inv_data = load_inventory()
+            except Exception:
+                inv_data = {}
+            with open(run_inventory_file, "w") as f:
+                yaml.safe_dump(inv_data, f, sort_keys=False)
+            device_count = len(inv_data.get("anta_inventory", {}).get("hosts", []))
 
-                # 3. Build & Execute isolated ANTA CLI command
-                cmd = ["anta", "nrfu"]
-                if run_tags_input.strip():
-                    cmd.extend(["--tags", run_tags_input.strip()])
-                cmd.extend(["--inventory", run_inventory_file, "--catalog", run_catalog_file, "--ignore-status", "json", "--output", run_output_file])
+            # 3. Build & Execute isolated ANTA CLI command
+            cmd = ["anta", "nrfu"]
+            if run_tags_input.strip():
+                cmd.extend(["--tags", run_tags_input.strip()])
+            cmd.extend(["--inventory", run_inventory_file, "--catalog", run_catalog_file, "--ignore-status", "json", "--output", run_output_file])
 
-                result = subprocess.run(cmd, capture_output=True, text=True, env=run_env, timeout=NRFU_SUBPROCESS_TIMEOUT)
-                output = result.stdout
-                stderr_output = result.stderr or ""
-
-                ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
-                output_clean = ansi_escape.sub('', output)
-                stderr_clean = ansi_escape.sub('', stderr_output)
-                full_log = output_clean + "\n" + stderr_clean
-
-                # Read the JSON results ANTA wrote directly to disk (via --output)
-                # rather than scraping them back out of the console transcript above:
-                # Rich's console.print_json() word-wraps long lines to a fixed
-                # terminal width when stdout isn't a real TTY (true for a piped
-                # subprocess), which can corrupt field values - e.g. a long
-                # device name or message - in ways that still parse as valid JSON
-                # but with wrong/missing data. The --output file is the same
-                # clean, unformatted serialization with none of that risk.
-                data = []
-                if os.path.exists(run_output_file):
-                    try:
-                        with open(run_output_file, "r") as f:
-                            data = json.load(f)
-                    except (json.JSONDecodeError, OSError):
-                        data = []
-                
-                invalid_pre_results = st.session_state.get("invalid_config_results", [])
-                
-                if not data and not invalid_pre_results:
-                    if "No tests scheduled to run" in full_log:
-                        st.warning("⚠️ **Notice:** ANTA skipped running tests because a tag filter in the catalog or execution filter does not match any device in Inventory.")
-                    else:
-                        st.error("No test results received from ANTA. Please ensure tests are selected and tag filters are correct.")
-                        with st.expander("View Full Raw Output"):
-                            st.code(full_log, language=None)
-                else:
-                    df_anta = pd.DataFrame(data) if data else pd.DataFrame()
-                    
-                    if not df_anta.empty and 'messages' in df_anta.columns:
-                        df_anta['messages'] = df_anta['messages'].apply(lambda x: ", ".join(x) if isinstance(x, list) else x)
-                    
-                    if invalid_pre_results:
-                        df_invalid = pd.DataFrame(invalid_pre_results)
-                        df_invalid['messages'] = df_invalid['messages'].apply(lambda x: ", ".join(x) if isinstance(x, list) else x)
-                        df = pd.concat([df_anta, df_invalid], ignore_index=True)
-                    else:
-                        df = df_anta
-                    
-                    total_tests = len(df)
-                    passed = len(df[df['result'] == 'success']) if 'result' in df.columns else 0
-                    failed = len(df[df['result'] == 'failure']) if 'result' in df.columns else 0
-                    error = len(df[df['result'] == 'error']) if 'result' in df.columns else 0
-                    skipped = len(df[df['result'] == 'skipped']) if 'result' in df.columns else 0
-                    
-                    st.subheader("📊 Test Summary")
-                    col1, col2, col3, col4, col5 = st.columns(5)
-                    col1.metric("Total Tests", total_tests)
-                    col2.metric("✅ Passed", passed)
-                    col3.metric("❌ Failed", failed)
-                    col4.metric("🚨 Error / Exception", error)
-                    col5.metric("⏭️ Skipped", skipped)
-                    
-                    st.divider()
-                    display_cols = ['name', 'categories', 'description', 'result', 'messages']
-                    df_display = df[[col for col in display_cols if col in df.columns]].copy()
-                    
-                    df_display['full_message'] = df_display['messages']
-                    df_display['messages'] = df_display['messages'].apply(
-                        lambda x: (str(x)[:60] + '...') if isinstance(x, str) and len(str(x)) > 60 else x
+            # subprocess.run(timeout=...) blocks silently until the whole run
+            # finishes or times out - no feedback for what can be a multi-minute
+            # wait. Poll a Popen handle instead so we can show elapsed time and
+            # what's running. This is honest progress info, not a fake percentage:
+            # ANTA's own progress bar gives per-test completion signals only when
+            # attached to a real terminal (Rich suppresses live updates entirely
+            # on a piped subprocess, verified directly against Rich's source), so
+            # there's no reliable per-test signal available here to build a real
+            # percentage from.
+            #
+            # stdout/stderr go to files, not PIPE: capturing both via PIPE without
+            # a thread actively draining them risks a classic subprocess deadlock
+            # if ANTA writes more than the OS pipe buffer (~64KB) while we're only
+            # polling .poll() in the loop below - unlikely for a handful of
+            # devices, not something to leave as a latent landmine for a larger
+            # fleet.
+            start_time = time.time()
+            timed_out = False
+            with open(run_stdout_file, "w") as out_f, open(run_stderr_file, "w") as err_f:
+                proc = subprocess.Popen(cmd, stdout=out_f, stderr=err_f, text=True, env=run_env)
+                while proc.poll() is None:
+                    elapsed = time.time() - start_time
+                    if elapsed > NRFU_SUBPROCESS_TIMEOUT:
+                        proc.kill()
+                        proc.wait()
+                        timed_out = True
+                        break
+                    status_placeholder.info(
+                        f"⏳ Running {selected_run_count} test(s) against {device_count} device(s) "
+                        f"(Run ID: {run_id}) · {elapsed:.0f}s elapsed"
                     )
-                    
-                    def color_result(val):
-                        if val == 'success': return 'color: #28a745; font-weight: bold'
-                        elif val in ['failure', 'error']: return 'color: #dc3545; font-weight: bold'
-                        return 'color: #ffc107; font-weight: bold'
-                    
-                    styled_df = df_display.drop(columns=['full_message']).style.map(color_result, subset=['result'])
-                    st.dataframe(styled_df, use_container_width=True)
-                    
-                    failed_df = df_display[df_display['result'].isin(['failure', 'error'])].copy()
-                    if not failed_df.empty:
-                        st.divider()
-                        st.subheader("🔍 Failed Tests Details (Grouped by Switch)")
-                        st.markdown("Click on a switch below to expand and view all of its failing tests.")
+                    time.sleep(1)
+            status_placeholder.empty()
 
-                        # pandas groupby silently drops rows whose key is NaN by default,
-                        # so any failure/error without a device name would vanish from this
-                        # section entirely while still counting toward the "Failed"/"Error"
-                        # totals above - fill it in so every row is shown somewhere.
-                        failed_df['name'] = failed_df['name'].fillna('(unknown device)')
-                        grouped = failed_df.groupby('name')
-                        for device_name, device_failures in grouped:
-                            fail_count = len(device_failures)
-                            expander_label = f"❌ **{device_name}** ({fail_count} failed test{'s' if fail_count > 1 else ''})"
-                            
-                            with st.expander(expander_label):
-                                for idx, (_, row) in enumerate(device_failures.iterrows(), start=1):
-                                    test_desc = row.get('description') or row.get('categories') or f"Test #{idx}"
-                                    if isinstance(test_desc, list):
-                                        test_desc = ", ".join(test_desc)
-                                        
-                                    st.markdown(f"#### {idx}. {test_desc}")
-                                    if 'categories' in row and pd.notna(row['categories']):
-                                        cat_display = ", ".join(row['categories']) if isinstance(row['categories'], list) else row['categories']
-                                        st.caption(f"**Category:** {cat_display}")
-                                    
-                                    if device_name == "Catalog Pre-Validator":
-                                        st.code(row['full_message'], language="text")
-                                    else:
-                                        st.error(row['full_message'])
-                                        
-                                    if idx < fail_count:
-                                        st.divider()
-            except subprocess.TimeoutExpired:
-                st.error(f"⏱️ Test run timed out after {NRFU_SUBPROCESS_TIMEOUT}s (Run ID: {run_id}). The device(s) may be unreachable or the test set too large.")
-            except Exception as e:
-                st.error(f"Error parsing results: {e}")
-                if full_log:
+            if timed_out:
+                raise subprocess.TimeoutExpired(cmd, NRFU_SUBPROCESS_TIMEOUT)
+
+            output = open(run_stdout_file, "r").read() if os.path.exists(run_stdout_file) else ""
+            stderr_output = open(run_stderr_file, "r").read() if os.path.exists(run_stderr_file) else ""
+
+            ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
+            output_clean = ansi_escape.sub('', output)
+            stderr_clean = ansi_escape.sub('', stderr_output)
+            full_log = output_clean + "\n" + stderr_clean
+
+            # Read the JSON results ANTA wrote directly to disk (via --output)
+            # rather than scraping them back out of the console transcript above:
+            # Rich's console.print_json() word-wraps long lines to a fixed
+            # terminal width when stdout isn't a real TTY (true for a piped
+            # subprocess), which can corrupt field values - e.g. a long
+            # device name or message - in ways that still parse as valid JSON
+            # but with wrong/missing data. The --output file is the same
+            # clean, unformatted serialization with none of that risk.
+            data = []
+            if os.path.exists(run_output_file):
+                try:
+                    with open(run_output_file, "r") as f:
+                        data = json.load(f)
+                except (json.JSONDecodeError, OSError):
+                    data = []
+            
+            invalid_pre_results = st.session_state.get("invalid_config_results", [])
+            
+            if not data and not invalid_pre_results:
+                if "No tests scheduled to run" in full_log:
+                    st.warning("⚠️ **Notice:** ANTA skipped running tests because a tag filter in the catalog or execution filter does not match any device in Inventory.")
+                else:
+                    st.error("No test results received from ANTA. Please ensure tests are selected and tag filters are correct.")
                     with st.expander("View Full Raw Output"):
                         st.code(full_log, language=None)
-            finally:
-                # Cleanup temporary isolated execution files
-                if os.path.exists(run_catalog_file):
-                    try: os.remove(run_catalog_file)
-                    except Exception: pass
-                if os.path.exists(run_inventory_file):
-                    try: os.remove(run_inventory_file)
-                    except Exception: pass
-                if os.path.exists(run_output_file):
-                    try: os.remove(run_output_file)
-                    except Exception: pass
+            else:
+                df_anta = pd.DataFrame(data) if data else pd.DataFrame()
+                
+                if not df_anta.empty and 'messages' in df_anta.columns:
+                    df_anta['messages'] = df_anta['messages'].apply(lambda x: ", ".join(x) if isinstance(x, list) else x)
+                
+                if invalid_pre_results:
+                    df_invalid = pd.DataFrame(invalid_pre_results)
+                    df_invalid['messages'] = df_invalid['messages'].apply(lambda x: ", ".join(x) if isinstance(x, list) else x)
+                    df = pd.concat([df_anta, df_invalid], ignore_index=True)
+                else:
+                    df = df_anta
+                
+                total_tests = len(df)
+                passed = len(df[df['result'] == 'success']) if 'result' in df.columns else 0
+                failed = len(df[df['result'] == 'failure']) if 'result' in df.columns else 0
+                error = len(df[df['result'] == 'error']) if 'result' in df.columns else 0
+                skipped = len(df[df['result'] == 'skipped']) if 'result' in df.columns else 0
+                
+                st.subheader("📊 Test Summary")
+                col1, col2, col3, col4, col5 = st.columns(5)
+                col1.metric("Total Tests", total_tests)
+                col2.metric("✅ Passed", passed)
+                col3.metric("❌ Failed", failed)
+                col4.metric("🚨 Error / Exception", error)
+                col5.metric("⏭️ Skipped", skipped)
+                
+                st.divider()
+                display_cols = ['name', 'categories', 'description', 'result', 'messages']
+                df_display = df[[col for col in display_cols if col in df.columns]].copy()
+                
+                df_display['full_message'] = df_display['messages']
+                df_display['messages'] = df_display['messages'].apply(
+                    lambda x: (str(x)[:60] + '...') if isinstance(x, str) and len(str(x)) > 60 else x
+                )
+                
+                def color_result(val):
+                    if val == 'success': return 'color: #28a745; font-weight: bold'
+                    elif val in ['failure', 'error']: return 'color: #dc3545; font-weight: bold'
+                    return 'color: #ffc107; font-weight: bold'
+                
+                styled_df = df_display.drop(columns=['full_message']).style.map(color_result, subset=['result'])
+                st.dataframe(styled_df, use_container_width=True)
+                
+                failed_df = df_display[df_display['result'].isin(['failure', 'error'])].copy()
+                if not failed_df.empty:
+                    st.divider()
+                    st.subheader("🔍 Failed Tests Details (Grouped by Switch)")
+                    st.markdown("Click on a switch below to expand and view all of its failing tests.")
+
+                    # pandas groupby silently drops rows whose key is NaN by default,
+                    # so any failure/error without a device name would vanish from this
+                    # section entirely while still counting toward the "Failed"/"Error"
+                    # totals above - fill it in so every row is shown somewhere.
+                    failed_df['name'] = failed_df['name'].fillna('(unknown device)')
+                    grouped = failed_df.groupby('name')
+                    for device_name, device_failures in grouped:
+                        fail_count = len(device_failures)
+                        expander_label = f"❌ **{device_name}** ({fail_count} failed test{'s' if fail_count > 1 else ''})"
+                        
+                        with st.expander(expander_label):
+                            for idx, (_, row) in enumerate(device_failures.iterrows(), start=1):
+                                test_desc = row.get('description') or row.get('categories') or f"Test #{idx}"
+                                if isinstance(test_desc, list):
+                                    test_desc = ", ".join(test_desc)
+                                    
+                                st.markdown(f"#### {idx}. {test_desc}")
+                                if 'categories' in row and pd.notna(row['categories']):
+                                    cat_display = ", ".join(row['categories']) if isinstance(row['categories'], list) else row['categories']
+                                    st.caption(f"**Category:** {cat_display}")
+                                
+                                if device_name == "Catalog Pre-Validator":
+                                    st.code(row['full_message'], language="text")
+                                else:
+                                    st.error(row['full_message'])
+                                    
+                                if idx < fail_count:
+                                    st.divider()
+        except subprocess.TimeoutExpired:
+            st.error(f"⏱️ Test run timed out after {NRFU_SUBPROCESS_TIMEOUT}s (Run ID: {run_id}). The device(s) may be unreachable or the test set too large.")
+        except Exception as e:
+            st.error(f"Error parsing results: {e}")
+            if full_log:
+                with st.expander("View Full Raw Output"):
+                    st.code(full_log, language=None)
+        finally:
+            # In case an exception happened before the loop's own .empty() call
+            # (e.g. while writing the catalog/inventory files) the "Starting..."
+            # status would otherwise be left on screen indefinitely.
+            status_placeholder.empty()
+            # Cleanup temporary isolated execution files
+            if os.path.exists(run_catalog_file):
+                try: os.remove(run_catalog_file)
+                except Exception: pass
+            if os.path.exists(run_inventory_file):
+                try: os.remove(run_inventory_file)
+                except Exception: pass
+            if os.path.exists(run_output_file):
+                try: os.remove(run_output_file)
+                except Exception: pass
+            if os.path.exists(run_stdout_file):
+                try: os.remove(run_stdout_file)
+                except Exception: pass
+            if os.path.exists(run_stderr_file):
+                try: os.remove(run_stderr_file)
+                except Exception: pass
 
 # ==========================================
 # TAB 5: RAW CLI (Custom Commands)
