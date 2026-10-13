@@ -1,5 +1,23 @@
 anta_inventory:
   hosts:
-    - host: 10.0.0.137     
-      name: Switch-01
-      tags: ['local']
+    - host: 10.100.164.2
+      name: 7050X3-ld007
+      tags: ['spine']
+    - host: 10.100.164.3
+      name: 7050X3-ld006
+      tags: ['spine']
+    - host: 10.100.164.4
+      name: 755-POD1
+      tags: ['leaf']
+    - host: 10.100.164.5
+      name: 722XP
+      tags: ['leaf']
+    - host: 10.100.164.7
+      name: 710XP
+      tags: ['leaf']
+    - host: 10.100.164.9
+      name: 720DP
+      tags: ['leaf']
+    - host: 10.100.164.12
+      name: SWAG
+      tags: ['leaf']

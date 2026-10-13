@@ -349,8 +349,8 @@ tab_dashboard, tab_creds, tab_inventory, tab_catalog, tab_cli = st.tabs([
 with tab_creds:
     st.subheader("Device Credentials")
     st.caption("These fields only affect your own browser session unless you click Save below.")
-    if "anta_user" not in st.session_state: st.session_state.anta_user = saved_settings.get("anta_user", "arista")
-    if "anta_pass" not in st.session_state: st.session_state.anta_pass = saved_settings.get("anta_pass", "arista")
+    if "anta_user" not in st.session_state: st.session_state.anta_user = saved_settings.get("anta_user", "admin")
+    if "anta_pass" not in st.session_state: st.session_state.anta_pass = saved_settings.get("anta_pass", "admin")
 
     st.session_state.anta_user = st.text_input("Username", value=st.session_state.anta_user, key="input_anta_user")
     st.session_state.anta_pass = st.text_input("Password", value=st.session_state.anta_pass, type="password", key="input_anta_pass")
