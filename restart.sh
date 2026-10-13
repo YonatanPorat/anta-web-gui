@@ -16,8 +16,16 @@ echo "🚀 Starting container..."
 # $VOLUME_NAME is a named Docker volume (created automatically if missing) so
 # every browser's private settings/inventory (data/users/<id>/) survives this
 # script removing and rebuilding the container on every redeploy.
+#
+# --network host: the switches this tool talks to often sit on a management
+# VLAN/subnet reachable from the host's own routing table/interfaces but NOT
+# from Docker's isolated bridge network (its NAT only egresses via the
+# host's default route). Host networking makes the container use the host's
+# network stack directly, so it can reach anything the host can - this is
+# why -p is no longer needed (the app binds straight to the host's own
+# 8501). Linux-only; doesn't work this way on Docker Desktop for Mac/Windows.
 docker run -d \
-  -p 8501:8501 \
+  --network host \
   --name $CONTAINER_NAME \
   --restart always \
   -v $VOLUME_NAME:/app/data \
