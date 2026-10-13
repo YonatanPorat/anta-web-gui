@@ -8,6 +8,7 @@ import os
 import re
 import uuid
 import fcntl
+from datetime import datetime, timezone
 from contextlib import contextmanager
 from importlib.metadata import version as pkg_version, PackageNotFoundError
 from anta.catalog import AntaCatalog
@@ -129,6 +130,59 @@ def load_inventory():
 def save_inventory(inv_payload):
     with locked_file(INVENTORY_FILE):
         _atomic_write(INVENTORY_FILE, lambda f: yaml.safe_dump(inv_payload, f, sort_keys=False))
+
+# --- Activity Log (shared across all browsers, for the hidden admin view) ---
+ACCESS_LOG_FILE = os.path.join(DATA_ROOT, "access_log.jsonl")
+
+def log_event(event_type, details=None):
+    # IP comes from the WebSocket connection, not a spoofable header - see
+    # st.context.ip_address's own docstring caveat: None for localhost access,
+    # and reflects the reverse proxy's IP rather than the real client's if this
+    # app is deployed behind one that doesn't forward the original address.
+    entry = {
+        "ts": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "client_id": CLIENT_ID,
+        "ip": st.context.ip_address,
+        "event": event_type,
+        "details": details or {},
+    }
+    try:
+        with locked_file(ACCESS_LOG_FILE):
+            with open(ACCESS_LOG_FILE, "a") as f:
+                f.write(json.dumps(entry) + "\n")
+    except Exception:
+        pass
+
+# Hidden admin view: not linked anywhere in the UI, reachable only by knowing
+# this exact URL query param. That's obscurity, not real access control -
+# anyone who learns the param can see every browser's IP and activity, so
+# don't put this URL anywhere shareable/public.
+if st.query_params.get("admin_logs") is not None:
+    st.title("🔒 Access Log")
+    st.caption(
+        "Hidden admin view - who loaded this app, from what IP, and what they ran. "
+        "IPs reflect the WebSocket peer; behind a reverse proxy that doesn't forward "
+        "the original client address, this will show the proxy's IP instead."
+    )
+    log_rows = []
+    if os.path.exists(ACCESS_LOG_FILE):
+        with locked_file(ACCESS_LOG_FILE):
+            with open(ACCESS_LOG_FILE, "r") as f:
+                for line in f:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        log_rows.append(json.loads(line))
+                    except json.JSONDecodeError:
+                        pass
+    if not log_rows:
+        st.info("No activity logged yet.")
+    else:
+        log_df = pd.DataFrame(log_rows).sort_values("ts", ascending=False).reset_index(drop=True)
+        st.metric("Total events", len(log_df))
+        st.dataframe(log_df, use_container_width=True)
+    st.stop()
 
 saved_settings = load_settings()
 
@@ -269,6 +323,10 @@ for k in ALL_TEST_KEYS:
 
 def update_test_state(key):
     st.session_state["master_test_states"][key] = st.session_state[key]
+
+if "logged_page_load" not in st.session_state:
+    st.session_state["logged_page_load"] = True
+    log_event("page_load")
 
 # ==========================================
 # STREAMLIT SIDEBAR: GLOBAL CONTROLS
@@ -1655,7 +1713,24 @@ with tab_dashboard:
         st.caption(f"🏷️ Execution filtered to tag(s): **{run_tags_input.strip()}** (set via \"Filter Tags\" in the sidebar).")
     else:
         st.caption("🏷️ No tag filter active - tests will run against all inventory devices. Set one via \"Filter Tags\" in the sidebar to scope both the catalog and the execution to matching devices.")
-    
+
+    # Warn (don't block) on duplicate IPs across inventory hosts - almost always a
+    # copy/paste mistake, and ANTA would otherwise silently test the same physical
+    # device twice under two different names without any indication something's off.
+    try:
+        _dup_check_hosts = load_inventory().get("anta_inventory", {}).get("hosts", [])
+    except Exception:
+        _dup_check_hosts = []
+    _ip_to_names = {}
+    for _h in _dup_check_hosts:
+        _ip = _h.get("host")
+        if _ip:
+            _ip_to_names.setdefault(_ip, []).append(_h.get("name") or _ip)
+    _dup_ips = {ip: names for ip, names in _ip_to_names.items() if len(names) > 1}
+    if _dup_ips:
+        _dup_lines = "; ".join(f"{ip} → {', '.join(names)}" for ip, names in _dup_ips.items())
+        st.warning(f"⚠️ Duplicate IP(s) in inventory, each listed under multiple names - tests will run against the same physical device more than once: {_dup_lines}")
+
     if st.button("🚀 Execute Tests", type="primary", use_container_width=True):
         # Build an isolated env for this run's subprocess instead of mutating the
         # shared process-wide os.environ, which would race with other concurrent
@@ -1669,6 +1744,12 @@ with tab_dashboard:
         run_catalog_file = f"temp_catalog_{run_id}.yml"
         run_inventory_file = f"temp_inventory_{run_id}.yml"
         run_output_file = f"temp_results_{run_id}.json"
+
+        log_event("nrfu_run", {
+            "run_id": run_id,
+            "test_count": selected_run_count,
+            "tags": run_tags_input.strip() or None,
+        })
 
         full_log = ""
         with st.spinner(f"Connecting to switches and running tests (Run ID: {run_id})... Please wait."):
@@ -1859,6 +1940,7 @@ with tab_cli:
         
         if st.button("Run Command", type="primary"):
             save_settings({"default_cli_device_label": selected_label})
+            log_event("cli_run", {"device": selected_device_id, "command": cmd_input})
             run_env = os.environ.copy()
             run_env["ANTA_USERNAME"] = st.session_state.anta_user
             run_env["ANTA_PASSWORD"] = st.session_state.anta_pass
