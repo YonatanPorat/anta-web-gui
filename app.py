@@ -378,12 +378,23 @@ with tab_inventory:
     with sub_networks: edited_networks = st.data_editor(df_networks, num_rows="dynamic", use_container_width=True, key="editor_networks")
     with sub_ranges: edited_ranges = st.data_editor(df_ranges, num_rows="dynamic", use_container_width=True, key="editor_ranges")
 
+    def _normalize_tags(records):
+        # ANTA requires `tags` to be a list; the data_editor's chip-style tags
+        # column normally keeps it a list, but defend against it coming back as
+        # a bare string anyway (e.g. pasted-in CSV data) so a scalar value
+        # can't reach the YAML file and crash ANTA's inventory validation.
+        for record in records:
+            tags = record.get("tags")
+            if isinstance(tags, str):
+                record["tags"] = [t.strip() for t in tags.split(",") if t.strip()]
+        return records
+
     if st.button("💾 Save Inventory", type="primary"):
         inv_payload = {
             "anta_inventory": {
-                "hosts": edited_hosts.dropna(how="all").to_dict("records"),
-                "networks": edited_networks.dropna(how="all").to_dict("records"),
-                "ranges": edited_ranges.dropna(how="all").to_dict("records")
+                "hosts": _normalize_tags(edited_hosts.dropna(how="all").to_dict("records")),
+                "networks": _normalize_tags(edited_networks.dropna(how="all").to_dict("records")),
+                "ranges": _normalize_tags(edited_ranges.dropna(how="all").to_dict("records")),
             }
         }
         save_inventory(inv_payload)
