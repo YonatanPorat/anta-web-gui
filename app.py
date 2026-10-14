@@ -1907,25 +1907,35 @@ with tab_dashboard:
                     for device_name, device_failures in grouped:
                         fail_count = len(device_failures)
                         expander_label = f"❌ **{device_name}** ({fail_count} failed test{'s' if fail_count > 1 else ''})"
-                        
+
+                        # One st.markdown call per device instead of ~4 separate
+                        # widget calls per failing test: with hundreds of failures
+                        # across a run, the per-call overhead of many small widgets
+                        # was slow enough that the page kept rendering (Streamlit's
+                        # "running" indicator stays lit) well after the actual test
+                        # results were already visible, looking like the run was
+                        # stuck. The message is always fenced as a code block (not
+                        # just for Catalog Pre-Validator) since it's raw device/test
+                        # output that could otherwise contain characters breaking
+                        # markdown formatting.
                         with st.expander(expander_label):
+                            parts = []
                             for idx, (_, row) in enumerate(device_failures.iterrows(), start=1):
                                 test_desc = row.get('description') or row.get('categories') or f"Test #{idx}"
                                 if isinstance(test_desc, list):
                                     test_desc = ", ".join(test_desc)
-                                    
-                                st.markdown(f"#### {idx}. {test_desc}")
+
+                                parts.append(f"#### {idx}. {test_desc}")
                                 if 'categories' in row and pd.notna(row['categories']):
                                     cat_display = ", ".join(row['categories']) if isinstance(row['categories'], list) else row['categories']
-                                    st.caption(f"**Category:** {cat_display}")
-                                
-                                if device_name == "Catalog Pre-Validator":
-                                    st.code(row['full_message'], language="text")
-                                else:
-                                    st.error(row['full_message'])
-                                    
+                                    parts.append(f"**Category:** {cat_display}")
+
+                                message_text = row['full_message'] if pd.notna(row['full_message']) else ""
+                                parts.append(f"````text\n{message_text}\n````")
+
                                 if idx < fail_count:
-                                    st.divider()
+                                    parts.append("---")
+                            st.markdown("\n\n".join(parts))
         except subprocess.TimeoutExpired:
             st.error(f"⏱️ Test run timed out after {NRFU_SUBPROCESS_TIMEOUT}s (Run ID: {run_id}). The device(s) may be unreachable or the test set too large.")
         except Exception as e:
