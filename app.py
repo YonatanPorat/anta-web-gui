@@ -1964,19 +1964,25 @@ with tab_dashboard:
                 st.divider()
                 display_cols = ['name', 'categories', 'description', 'result', 'messages']
                 df_display = df[[col for col in display_cols if col in df.columns]].copy()
-                
                 df_display['full_message'] = df_display['messages']
-                df_display['messages'] = df_display['messages'].apply(
-                    lambda x: (str(x)[:60] + '...') if isinstance(x, str) and len(str(x)) > 60 else x
-                )
-                
+
                 def color_result(val):
                     if val == 'success': return 'color: #28a745; font-weight: bold'
                     elif val in ['failure', 'error']: return 'color: #dc3545; font-weight: bold'
                     return 'color: #ffc107; font-weight: bold'
-                
+
+                # messages is no longer pre-truncated to 60 chars: that cut the
+                # actual string content (not just its on-screen display), so the
+                # full text was never recoverable - no amount of scrolling or
+                # clicking the cell could show something that wasn't there.
+                # st.dataframe already lets a user drag a column wider or use its
+                # own search/fullscreen toolbar to read a long cell, so it's not
+                # needed here.
                 styled_df = df_display.drop(columns=['full_message']).style.map(color_result, subset=['result'])
-                st.dataframe(styled_df, use_container_width=True)
+                st.dataframe(
+                    styled_df, use_container_width=True,
+                    column_config={"messages": st.column_config.TextColumn("messages", width="large")},
+                )
                 
                 failed_df = df_display[df_display['result'].isin(['failure', 'error'])].copy()
                 if not failed_df.empty:
