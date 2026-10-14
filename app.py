@@ -105,7 +105,16 @@ def save_settings(data_dict):
             except Exception:
                 current = {}
         current.update(data_dict)
-        _atomic_write(SETTINGS_FILE, lambda f: json.dump(current, f, indent=4))
+        try:
+            _atomic_write(SETTINGS_FILE, lambda f: json.dump(current, f, indent=4))
+        except OSError as e:
+            # With many concurrent users, a full/unwritable disk shouldn't show
+            # a raw traceback (file paths, stack trace) to whoever happened to
+            # trigger the next write - show a plain message instead and let the
+            # rest of the page keep working with the in-session value.
+            st.error(f"⚠️ Could not save settings (disk issue on the server: {e.strerror or e}). Your change is kept for this browser tab but not saved - contact your administrator.")
+            return False
+    return True
 
 # --- Persistent Inventory Helper ---
 # Each browser gets its own inventory.yml. A brand-new browser has none yet,
@@ -130,7 +139,12 @@ def load_inventory():
 
 def save_inventory(inv_payload):
     with locked_file(INVENTORY_FILE):
-        _atomic_write(INVENTORY_FILE, lambda f: yaml.safe_dump(inv_payload, f, sort_keys=False))
+        try:
+            _atomic_write(INVENTORY_FILE, lambda f: yaml.safe_dump(inv_payload, f, sort_keys=False))
+        except OSError as e:
+            st.error(f"⚠️ Could not save inventory (disk issue on the server: {e.strerror or e}). Your edits are kept in this browser tab but not saved - contact your administrator.")
+            return False
+    return True
 
 # --- Activity Log (shared across all browsers, for the hidden admin view) ---
 ACCESS_LOG_FILE = os.path.join(DATA_ROOT, "access_log.jsonl")
@@ -362,8 +376,8 @@ with st.sidebar:
                 "keys": current_keys,
                 "cfg_rules": st.session_state.get("cfg_rules_data", default_config_rules)
             }
-            save_settings({"profiles": active_profiles, "selected_test_keys": current_keys})
-            st.success("Saved!")
+            if save_settings({"profiles": active_profiles, "selected_test_keys": current_keys}):
+                st.success("Saved!")
 
     st.markdown("---")
     st.markdown("##### 🏷️ Filter Tags")
@@ -415,8 +429,8 @@ with tab_creds:
     st.session_state.anta_pass = st.text_input("Password", value=st.session_state.anta_pass, type="password", key="input_anta_pass")
 
     if st.button("💾 Save as Default Credentials", type="primary"):
-        save_settings({"anta_user": st.session_state.anta_user, "anta_pass": st.session_state.anta_pass})
-        st.success("✅ Credentials saved!")
+        if save_settings({"anta_user": st.session_state.anta_user, "anta_pass": st.session_state.anta_pass}):
+            st.success("✅ Credentials saved!")
     st.caption("🔒 Saved credentials are private to this browser (see the sidebar) — other people using this app from a different browser or computer won't see or affect them.")
 
 # ==========================================
@@ -528,8 +542,8 @@ with tab_inventory:
                 "ranges": _normalize_tags(edited_ranges.dropna(how="all").to_dict("records")),
             }
         }
-        save_inventory(inv_payload)
-        st.success("✅ Inventory.yml saved successfully!")
+        if save_inventory(inv_payload):
+            st.success("✅ Inventory.yml saved successfully!")
 
 # ==========================================
 # TAB 3: CATALOG BUILDER (PARAMETRIZED)
