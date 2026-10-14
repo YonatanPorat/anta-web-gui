@@ -432,10 +432,82 @@ with tab_inventory:
     df_networks = pd.DataFrame([dict(n) for n in anta_inv.get("networks", [])])
     df_ranges = pd.DataFrame([dict(r) for r in anta_inv.get("ranges", [])])
 
+    def _tags_to_cell(value):
+        if isinstance(value, list):
+            return ";".join(value)
+        return value if pd.notna(value) else ""
+
+    def _tags_from_cell(value):
+        if pd.isna(value) or str(value).strip() == "":
+            return []
+        return [t.strip() for t in str(value).split(";") if t.strip()]
+
+    def inventory_csv_import_export(section_label, df, columns, demo_rows, session_key):
+        # CSV instead of YAML for import/export: this is a spreadsheet of
+        # devices, and network engineers already maintain exactly that in
+        # Excel/Sheets - no need to make them learn YAML indentation to bulk-edit
+        # an inventory. `tags` is the one field CSV can't represent natively
+        # (no list type in a cell), so it's joined/split on ";" by convention.
+        col_dl, col_ul = st.columns(2)
+        with col_dl:
+            export_df = df if not df.empty else pd.DataFrame(demo_rows)
+            export_df = export_df.copy()
+            if "tags" in export_df.columns:
+                export_df["tags"] = export_df["tags"].apply(_tags_to_cell)
+            csv_bytes = export_df.to_csv(index=False).encode("utf-8")
+            label = "📤 Export to CSV" if not df.empty else "📤 Export demo CSV (inventory is empty)"
+            st.download_button(label, data=csv_bytes, file_name=f"anta_{session_key}.csv", mime="text/csv", key=f"dl_{session_key}")
+        with col_ul:
+            uploaded = st.file_uploader("📥 Import from CSV", type="csv", key=f"ul_{session_key}", label_visibility="collapsed")
+        # st.file_uploader keeps returning the same UploadedFile across reruns
+        # until the user picks a different file or clears it - without this
+        # file_id check, the st.rerun() below would re-trigger on every
+        # subsequent script run, loop forever on the same upload.
+        last_seen_key = f"last_imported_file_id_{session_key}"
+        if uploaded is not None and st.session_state.get(last_seen_key) != uploaded.file_id:
+            st.session_state[last_seen_key] = uploaded.file_id
+            try:
+                imported_df = pd.read_csv(uploaded)
+                missing_cols = [c for c in columns if c not in imported_df.columns]
+                if missing_cols:
+                    st.error(f"CSV is missing expected column(s): {', '.join(missing_cols)}")
+                else:
+                    if "tags" in imported_df.columns:
+                        imported_df["tags"] = imported_df["tags"].apply(_tags_from_cell)
+                    version_key = f"import_version_{session_key}"
+                    st.session_state[version_key] = st.session_state.get(version_key, 0) + 1
+                    st.session_state[f"pending_import_{session_key}"] = imported_df
+                    st.success(f"Imported {len(imported_df)} row(s) from CSV - review below, then click \"💾 Save Inventory\" to keep it.")
+                    st.rerun()
+            except Exception as e:
+                st.error(f"Could not read CSV: {e}")
+
     sub_hosts, sub_networks, sub_ranges = st.tabs(["🖥️ Specific Hosts", "🌐 Networks (CIDR)", "🔢 IP Ranges"])
-    with sub_hosts: edited_hosts = st.data_editor(df_hosts, num_rows="dynamic", use_container_width=True, key="editor_hosts")
-    with sub_networks: edited_networks = st.data_editor(df_networks, num_rows="dynamic", use_container_width=True, key="editor_networks")
-    with sub_ranges: edited_ranges = st.data_editor(df_ranges, num_rows="dynamic", use_container_width=True, key="editor_ranges")
+    with sub_hosts:
+        inventory_csv_import_export(
+            "Hosts", df_hosts, ["host", "name", "tags"],
+            [{"host": "192.0.2.10", "name": "example-leaf-01", "tags": "leaf"},
+             {"host": "192.0.2.11", "name": "example-spine-01", "tags": "spine"}],
+            "hosts",
+        )
+        df_hosts = st.session_state.get("pending_import_hosts", df_hosts)
+        edited_hosts = st.data_editor(df_hosts, num_rows="dynamic", use_container_width=True, key=f"editor_hosts_{st.session_state.get('import_version_hosts', 0)}")
+    with sub_networks:
+        inventory_csv_import_export(
+            "Networks", df_networks, ["network", "tags"],
+            [{"network": "192.0.2.0/24", "tags": "leaf"}],
+            "networks",
+        )
+        df_networks = st.session_state.get("pending_import_networks", df_networks)
+        edited_networks = st.data_editor(df_networks, num_rows="dynamic", use_container_width=True, key=f"editor_networks_{st.session_state.get('import_version_networks', 0)}")
+    with sub_ranges:
+        inventory_csv_import_export(
+            "Ranges", df_ranges, ["start", "end", "tags"],
+            [{"start": "192.0.2.20", "end": "192.0.2.30", "tags": "leaf"}],
+            "ranges",
+        )
+        df_ranges = st.session_state.get("pending_import_ranges", df_ranges)
+        edited_ranges = st.data_editor(df_ranges, num_rows="dynamic", use_container_width=True, key=f"editor_ranges_{st.session_state.get('import_version_ranges', 0)}")
 
     def _normalize_tags(records):
         # ANTA requires `tags` to be a list; the data_editor's chip-style tags
