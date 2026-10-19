@@ -462,7 +462,7 @@ with tab_inventory:
         # Excel/Sheets - no need to make them learn YAML indentation to bulk-edit
         # an inventory. `tags` is the one field CSV can't represent natively
         # (no list type in a cell), so it's joined/split on ";" by convention.
-        col_dl, col_ul = st.columns(2)
+        col_dl, col_ul = st.columns(2, vertical_alignment="bottom")
         with col_dl:
             export_df = df if not df.empty else pd.DataFrame(demo_rows)
             export_df = export_df.copy()
