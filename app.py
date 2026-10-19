@@ -1926,7 +1926,35 @@ with tab_dashboard:
                     data = []
             
             invalid_pre_results = st.session_state.get("invalid_config_results", [])
-            
+
+            # A device ANTA can't connect to produces zero TestResult entries -
+            # not a failure row, not a success row, just silently absent from
+            # `data` entirely (verified directly against ANTA's runner: a
+            # connectivity failure is filtered out before any test ever runs
+            # against that device). That made an unreachable device vanish from
+            # both the summary counts and "Failed Tests Details" with no visible
+            # trace of what happened to it. Recover that from the console log
+            # instead and surface it as a synthetic error row per device, same
+            # mechanism as the existing Catalog Pre-Validator rows below.
+            connect_fail_pattern = re.compile(
+                r"An error occurred while attempting to connect.*?to device\s+([^\s:]+):\s*(\w+)",
+                re.DOTALL,
+            )
+            seen_unreachable = set()
+            connectivity_error_results = []
+            for device_name, error_type in connect_fail_pattern.findall(full_log):
+                if device_name in seen_unreachable:
+                    continue
+                seen_unreachable.add(device_name)
+                connectivity_error_results.append({
+                    "name": device_name,
+                    "categories": ["connectivity"],
+                    "description": "Device connectivity check (eAPI reachability)",
+                    "result": "error",
+                    "messages": [f"{error_type}: ANTA could not connect to this device, so it was excluded from every test in this run."],
+                })
+            invalid_pre_results = invalid_pre_results + connectivity_error_results
+
             if not data and not invalid_pre_results:
                 if "No tests scheduled to run" in full_log:
                     st.warning("⚠️ **Notice:** ANTA skipped running tests because a tag filter in the catalog or execution filter does not match any device in Inventory.")
