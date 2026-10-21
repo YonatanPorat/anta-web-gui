@@ -452,10 +452,16 @@ with tab_inventory:
     st.caption("🔒 This inventory is private to this browser (see the sidebar) — other people using this app from a different browser or computer have their own, separate inventory.")
     inv_data = load_inventory()
 
+    # pd.DataFrame([]) has zero columns when there are no rows yet, so with an
+    # empty inventory (the default since the sample template was emptied out)
+    # the data_editor had no "host"/"name"/"tags" columns to show at all - no
+    # way to even start typing a new row manually, only CSV import worked.
+    # Pass the expected columns explicitly so an empty table still has headers
+    # to type into.
     anta_inv = inv_data.get("anta_inventory", {})
-    df_hosts = pd.DataFrame([dict(h) for h in anta_inv.get("hosts", [])])
-    df_networks = pd.DataFrame([dict(n) for n in anta_inv.get("networks", [])])
-    df_ranges = pd.DataFrame([dict(r) for r in anta_inv.get("ranges", [])])
+    df_hosts = pd.DataFrame([dict(h) for h in anta_inv.get("hosts", [])], columns=["host", "name", "tags"])
+    df_networks = pd.DataFrame([dict(n) for n in anta_inv.get("networks", [])], columns=["network", "tags"])
+    df_ranges = pd.DataFrame([dict(r) for r in anta_inv.get("ranges", [])], columns=["start", "end", "tags"])
 
     def _tags_to_cell(value):
         if isinstance(value, list):
