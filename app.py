@@ -38,15 +38,26 @@ def get_client_id():
     existing = st.context.cookies.get(CLIENT_ID_COOKIE)
     if existing:
         return existing
-    new_id = uuid.uuid4().hex
-    components.html(
-        f"""<script>
-        document.cookie = "{CLIENT_ID_COOKIE}={new_id}; path=/; max-age=31536000; SameSite=Lax";
-        window.top.location.reload();
-        </script>""",
-        height=0,
-    )
-    st.stop()
+    # No cookie yet. st.context.cookies only reflects the HTTP request that
+    # opened this WebSocket session - setting document.cookie here doesn't
+    # make it reappear there until a real new page load happens, so a plain
+    # rerun would see "no cookie" again and mint a DIFFERENT id every time.
+    # Cache the minted id in session_state (which *does* persist across
+    # reruns within this session) so it stays stable for the rest of this
+    # visit; the cookie is still set for next time, picked up for free on
+    # the next real page load without any forced reload today, which used to
+    # double the full page-load cost for every first-time visitor (reload-
+    # on-first-visit was previously load-the-whole-app-twice).
+    if "minted_client_id" not in st.session_state:
+        new_id = uuid.uuid4().hex
+        st.session_state["minted_client_id"] = new_id
+        components.html(
+            f"""<script>
+            document.cookie = "{CLIENT_ID_COOKIE}={new_id}; path=/; max-age=31536000; SameSite=Lax";
+            </script>""",
+            height=0,
+        )
+    return st.session_state["minted_client_id"]
 
 CLIENT_ID = get_client_id()
 
