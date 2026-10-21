@@ -1818,13 +1818,15 @@ with tab_dashboard:
     else:
         st.caption("🏷️ No tag filter active - tests will run against all inventory devices. Set one via \"Filter Tags\" in the sidebar to scope both the catalog and the execution to matching devices.")
 
+    try:
+        _dashboard_anta_inv = load_inventory().get("anta_inventory", {})
+    except Exception:
+        _dashboard_anta_inv = {}
+    _dup_check_hosts = _dashboard_anta_inv.get("hosts", [])
+
     # Warn (don't block) on duplicate IPs across inventory hosts - almost always a
     # copy/paste mistake, and ANTA would otherwise silently test the same physical
     # device twice under two different names without any indication something's off.
-    try:
-        _dup_check_hosts = load_inventory().get("anta_inventory", {}).get("hosts", [])
-    except Exception:
-        _dup_check_hosts = []
     _ip_to_names = {}
     for _h in _dup_check_hosts:
         _ip = _h.get("host")
@@ -1835,7 +1837,19 @@ with tab_dashboard:
         _dup_lines = "; ".join(f"{ip} → {', '.join(names)}" for ip, names in _dup_ips.items())
         st.warning(f"⚠️ Duplicate IP(s) in inventory, each listed under multiple names - tests will run against the same physical device more than once: {_dup_lines}")
 
-    if st.button("🚀 Execute Tests", type="primary", use_container_width=True):
+    # With zero devices in inventory, ANTA exits before running anything and
+    # the app has no results and no error to point at - just the generic
+    # "No test results received" message, which gives no hint that the real
+    # problem is an empty inventory. Block the run up front instead, with a
+    # message that actually says what's wrong.
+    _total_devices = (
+        len(_dup_check_hosts)
+        + len(_dashboard_anta_inv.get("networks", []))
+        + len(_dashboard_anta_inv.get("ranges", []))
+    )
+    if _total_devices == 0:
+        st.error("⚠️ Inventory is empty - add at least one device, network, or IP range in \"Manage Inventory\" before running tests.")
+    elif st.button("🚀 Execute Tests", type="primary", use_container_width=True):
         # Build an isolated env for this run's subprocess instead of mutating the
         # shared process-wide os.environ, which would race with other concurrent
         # user sessions running in the same Streamlit process.
