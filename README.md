@@ -16,6 +16,11 @@ This project enables network engineers to design, build, and execute Network Rea
 * Real-time generation and auto-saving of valid `catalog.yml` files.
 * Native support for dynamic `VerifyRunningConfig` rules with custom match conditions.
 
+* **📂 Device catalog directory (profile):**
+* When `ANTA_DEVICE_CATALOGS_DIR` is set, a built-in sidebar profile runs pre-generated per-device catalogs (`<hostname>.json` or `.yaml`).
+* Matches [Arista AVD `anta_runner`](https://avd.arista.com/latest/docs/installation/anta/index.html) output (`avd/anta/avd_catalogs/`). Description via `ANTA_CATALOG_PROFILE_DESCRIPTION`.
+* Execute from the **Dashboard** like other profiles (no separate tab).
+
 
 * **🎯 Test Profile Presets:**
 * Switch between testing profiles on the fly (e.g., *Basic NRFU Quick Check*, *Deep NRFU Full Audit*).
@@ -84,11 +89,53 @@ Open your browser and navigate to `http://localhost:8501`.
 ## 📂 Project Structure
 
 ```text
-├── app.py           # Main Streamlit Dashboard Application
-├── Dockerfile       # Container build specifications
-├── restart.sh       # Automation script for container rebuilds
-├── entrypoint.sh    # Docker initialization script
-├── inventory.yml    # Auto-generated ANTA Inventory
-└── .gitignore       # Git exclusion rules
+├── app.py                 # Main Streamlit Dashboard Application
+├── device_catalog_dir.py  # Per-device catalog directory NRFU runner
+├── Dockerfile             # Container build specifications
+├── restart.sh             # Automation script for container rebuilds
+├── entrypoint.sh          # Docker initialization script
+├── inventory.yml          # Auto-generated ANTA Inventory
+└── .gitignore             # Git exclusion rules
 
 ```
+
+### Device catalog directory (Docker)
+
+Mount a read-only directory of per-device catalog files and point the app at it:
+
+```bash
+docker run -p 8501:8501 \
+  -e ANTA_DEVICE_CATALOGS_DIR=/catalogs \
+  -v /path/to/avd/anta/avd_catalogs:/catalogs:ro \
+  anta-web-gui
+```
+
+Inventory host **names** must match catalog filenames (e.g. `leaf1.json` → host name `leaf1`).
+
+Optional tuning (environment variables):
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `ANTA_DEVICE_CATALOG_WORKERS` | `4` | Devices run in parallel |
+| `ANTA_DEVICE_CATALOG_TIMEOUT` | `300` | Seconds per device before it is marked as an error (capped by the global NRFU timeout) |
+| `ANTA_DEVICE_CATALOG_ENABLE` | off | Set to `1` to pass `--enable` to `anta nrfu` for these runs |
+
+AVD catalogs that inspect running configuration or run privileged commands need
+`-e ANTA_DEVICE_CATALOG_ENABLE=1`. This remains opt-in for other deployments.
+
+### Credential defaults
+
+Set `ANTA_USERNAME` and `ANTA_PASSWORD` to seed credentials for a new browser.
+Credentials saved in the GUI take precedence; without these variables the
+defaults remain `admin` / `admin`.
+
+### Regression checks
+
+With the application dependencies installed, run:
+
+```bash
+python -m unittest discover -s tests -v
+```
+
+These checks use temporary browser settings and do not contact any devices.
+
