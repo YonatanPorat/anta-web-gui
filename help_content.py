@@ -557,7 +557,7 @@ SCENARIOS = [
     (
         "Quick daily health check",
         "A fast look at every switch, a few minutes.",
-        "Start with the ** Basic NRFU (Quick Check)** profile: transceiver manufacturers, power, temperature, uptime, NTP, interface errors, interface status and running-config diffs. Edit the ones that need values (the transceiver manufacturers list, the interface list, and the minimum uptime if 60 seconds is not what you want), then add **CPU**, **Memory**, **Reload Cause**, **Coredump**, **Agent Logs** and **Logging Errors** from the System and Logging categories.",
+        "Start with the **Basic NRFU (Quick Check)** profile: transceiver manufacturers, power, temperature, uptime, NTP, interface errors, interface status and running-config diffs. Edit the ones that need values (the transceiver manufacturers list, the interface list, and the minimum uptime if 60 seconds is not what you want), then add **CPU**, **Memory**, **Reload Cause**, **Coredump**, **Agent Logs** and **Logging Errors** from the System and Logging categories.",
     ),
     (
         "Before and after a change window",
@@ -635,7 +635,7 @@ FAQ = [
     ),
     (
         "Can I save or export the results?",
-        "Yes. After a run, use ** Download CSV** or ** Download JSON** above the results table. Results stay on the Dashboard only until the next run, so download first if you need a record.",
+        "Yes. After a run, use **Download CSV** or **Download JSON** above the results table. Results stay on the Dashboard only until the next run, so download first if you need a record.",
     ),
 ]
 
@@ -688,11 +688,11 @@ def render_help(st, category_keys: dict[str, list[str]]) -> None:
 
 ### Run your first check in five steps
 
-1. ** Credentials** – enter the username and password of your switches. ANTA talks to them over **eAPI (HTTPS)**, so eAPI must be enabled on every switch (`management api http-commands` → `no shutdown`). Click *Save as Default Credentials* if you want this browser to remember them.
-2. ** Manage Inventory** – add your switches. In *Specific Hosts* put the IP or DNS name in **host**, a friendly name in **name**, and optionally **tags** such as `leaf` or `spine`. Click ** Save Inventory**.
-3. **Pick what to test** – in the sidebar choose ** Basic NRFU (Quick Check)** and click ** Load**. This selects eight everyday health checks.
-4. *(Optional)* ** Manage Tests** – review the selection and fill in the values the tests need (interfaces, versions, neighbors…).
-5. ** Dashboard** → **Execute Tests**. When it finishes you get a summary, a table with one row per test per switch, and expandable details for every failure.
+1. **Credentials** – enter the username and password of your switches. ANTA talks to them over **eAPI (HTTPS)**, so eAPI must be enabled on every switch (`management api http-commands` → `no shutdown`). Click *Save as Default Credentials* if you want this browser to remember them.
+2. **Manage Inventory** – add your switches. In *Specific Hosts* put the IP or DNS name in **host**, a friendly name in **name**, and optionally **tags** such as `leaf` or `spine`. Click **Save Inventory**.
+3. **Pick what to test** – in the sidebar choose **Basic NRFU (Quick Check)** and click **Load**. This selects eight everyday health checks.
+4. *(Optional)* **Manage Tests** – review the selection and fill in the values the tests need (interfaces, versions, neighbors…).
+5. **Dashboard** → **Execute Tests**. When it finishes you get a summary, a table with one row per test per switch, and expandable details for every failure.
 
 > **Tip:** start small. Get the Basic profile green on one or two switches, then add test areas and more switches. Running everything at once on default values produces a wall of failures that mostly means "values not filled in yet".
             """
@@ -780,22 +780,22 @@ After the container starts, an extra profile named **AVD design catalogs** appea
 | Control | What it does |
 |---|---|
 | **Select Active Profile** | A named set of ticked tests. The two built-in ones are *Basic NRFU (Quick Check)* and *Deep NRFU (Full Audit)*. If your administrator configured a catalog directory, a third profile, *AVD design catalogs*, appears (see the External catalogs tab). |
-| ** Load** | Ticks the tests stored in the selected profile (and replaces the config rules with the profile's). |
-| **Save as** + ** Save** | Stores your *current* selection (and Custom YAML) under the name in the box. Same name as an existing profile = overwrite (needs the confirmation tick); a new name creates a new profile. |
-| ** Filter Tags** | Limits both the tests and the devices to a tag (see Options). Leave empty to use every device. |
-| ** Selected Tests** | How many of the tests are ticked. |
+| **Load** | Ticks the tests stored in the selected profile (and replaces the config rules with the profile's). |
+| **Save as** + **Save** | Stores your *current* selection (and Custom YAML) under the name in the box. Same name as an existing profile = overwrite (needs the confirmation tick); a new name creates a new profile. |
+| **Filter Tags** | Limits both the tests and the devices to a tag (see Options). Leave empty to use every device. |
+| **Selected Tests** | How many of the tests are ticked. |
 | **Select All / Deselect All** | Ticks or clears every test at once. |
 
 ### The tabs
 
 | Tab | Use it to |
 |---|---|
-| ** Dashboard** | Run the selected tests and read the results. |
-| ** Credentials** | Set the switch username and password. |
-| ** Manage Inventory** | Add, edit, import and export the switches to test. |
-| ** Manage Tests** | Tick tests and fill in their values, one category at a time. The last category, ** Custom YAML**, takes tests written in ANTA catalog format; they are added to every run on top of the ticks (invalid YAML or an unknown test shows up as a *Catalog Pre-Validator* error row). |
-| ** Raw CLI** | Run a one-off `show` command on one switch. |
-| ** Help** | This guide. |
+| **Dashboard** | Run the selected tests and read the results. |
+| **Credentials** | Set the switch username and password. |
+| **Manage Inventory** | Add, edit, import and export the switches to test. |
+| **Manage Tests** | Tick tests and fill in their values, one category at a time. The last category, **Custom YAML**, takes tests written in ANTA catalog format; they are added to every run on top of the ticks (invalid YAML or an unknown test shows up as a *Catalog Pre-Validator* error row). |
+| **Raw CLI** | Run a one-off `show` command on one switch. |
+| **Help** | This guide. |
             """
         )
 
@@ -806,8 +806,8 @@ After the container starts, an extra profile named **AVD design catalogs** appea
                 """
 A profile is just a saved list of ticked tests.
 
-- ** Basic NRFU (Quick Check)** – eight everyday checks: transceiver manufacturers, power, temperature, uptime, NTP, interface errors, interface status, running-config diffs. Good for a daily look.
-- ** Deep NRFU (Full Audit)** – ticks **every** test and includes example config rules. Use it as a starting point for a thorough audit, **not** as a ready-to-run check: many tests need your values (see *Which tests?*).
+- **Basic NRFU (Quick Check)** – eight everyday checks: transceiver manufacturers, power, temperature, uptime, NTP, interface errors, interface status, running-config diffs. Good for a daily look.
+- **Deep NRFU (Full Audit)** – ticks **every** test and includes example config rules. Use it as a starting point for a thorough audit, **not** as a ready-to-run check: many tests need your values (see *Which tests?*).
 - **Your own** – tick what you want, then **Save**. Type a new name in **Save as** to keep the original profile untouched; reusing a name overwrites it (after you confirm).
 - A profile must be **Loaded** before it affects Manage Tests and the Dashboard. Just selecting it in the dropdown does not change the ticks.
                 """
@@ -832,7 +832,7 @@ There are three ways to say which switches to test, each on its own sub-tab:
 - **Networks (CIDR)** – a whole subnet, for example `192.0.2.0/24`.
 - **IP Ranges** – a `start` and `end` address.
 
-You can type in the table, or use ** Export to CSV** / ** Import from CSV** to edit an inventory in a spreadsheet (separate multiple tags with `;`). Importing only fills the table: click ** Save Inventory** to keep it. The inventory is private to your browser.
+You can type in the table, or use **Export to CSV** / **Import from CSV** to edit an inventory in a spreadsheet (separate multiple tags with `;`). Importing only fills the table: click **Save Inventory** to keep it. The inventory is private to your browser.
 
 The **Raw CLI** tab can only use *Specific Hosts*, not networks or ranges.
                 """
