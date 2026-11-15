@@ -285,13 +285,18 @@ ALL_TEST_KEYS = [
     # VLAN & VXLAN
     "chk_vlan_dynamic", "chk_vlan_internal", "chk_vlan_status",
     "chk_vxlan_conn", "chk_vxlan_intf", "chk_vxlan_vvtep", "chk_vxlan_sanity", "chk_vxlan_vni_binding", "chk_vxlan_vtep",
-    # Security Advisories (new in ANTA 1.10.0)
+    # Security Advisories (added in ANTA 1.10.0)
     "chk_adv_sa117", "chk_adv_sa140", "chk_adv_sa142", "chk_adv_sa146", "chk_adv_sa147", "chk_adv_sa149",
     "chk_adv_sa150", "chk_adv_sa151", "chk_adv_sa152", "chk_adv_sa153", "chk_adv_sa154", "chk_adv_sa155",
     "chk_adv_sa156", "chk_adv_sa157", "chk_adv_sa158", "chk_adv_sa159", "chk_adv_sa160", "chk_adv_sa161",
     "chk_adv_sa162", "chk_adv_sa163", "chk_adv_sa164", "chk_adv_sa165", "chk_adv_sa166", "chk_adv_sa167",
     "chk_adv_sa168", "chk_adv_sa169", "chk_adv_sa170", "chk_adv_sa171", "chk_adv_sa172", "chk_adv_sa173",
     "chk_adv_sa174", "chk_adv_sa175", "chk_adv_sa176", "chk_adv_sa177", "chk_adv_sa178",
+    # New in ANTA 1.11.0
+    "chk_adv_sa201", "chk_adv_sa205", "chk_adv_sa206", "chk_adv_sa207", "chk_adv_sa208", "chk_adv_sa209",
+    "chk_adv_sa210", "chk_adv_sa211", "chk_adv_sa212", "chk_adv_sa213", "chk_adv_sa214", "chk_adv_sa215",
+    "chk_adv_sa216", "chk_adv_sa217", "chk_adv_sa218", "chk_adv_sa219", "chk_adv_sa220", "chk_adv_sa221",
+    "chk_adv_sa222", "chk_adv_sa223", "chk_adv_sa224", "chk_adv_sa225",
 ]
 
 # Test keys grouped by their "Manage Tests" category, for the per-category
@@ -322,7 +327,7 @@ CATEGORY_KEYS = {
     "STUN": ["chk_stun_client", "chk_stun_client_trans", "chk_stun_status"],
     "System": ["chk_sys_agent_logs", "chk_sys_cpu", "chk_sys_coredump", "chk_sys_file_presence", "chk_sys_fs_util", "chk_sys_flash_util", "chk_sys_maintenance", "chk_sys_mem", "chk_sys_ntp", "chk_sys_ntp_assoc", "chk_sys_reload", "chk_sys_uptime"],
     "VLAN": ["chk_vlan_dynamic", "chk_vlan_internal", "chk_vlan_status"],
-    "Advisories": ["chk_adv_sa117", "chk_adv_sa140", "chk_adv_sa142", "chk_adv_sa146", "chk_adv_sa147", "chk_adv_sa149", "chk_adv_sa150", "chk_adv_sa151", "chk_adv_sa152", "chk_adv_sa153", "chk_adv_sa154", "chk_adv_sa155", "chk_adv_sa156", "chk_adv_sa157", "chk_adv_sa158", "chk_adv_sa159", "chk_adv_sa160", "chk_adv_sa161", "chk_adv_sa162", "chk_adv_sa163", "chk_adv_sa164", "chk_adv_sa165", "chk_adv_sa166", "chk_adv_sa167", "chk_adv_sa168", "chk_adv_sa169", "chk_adv_sa170", "chk_adv_sa171", "chk_adv_sa172", "chk_adv_sa173", "chk_adv_sa174", "chk_adv_sa175", "chk_adv_sa176", "chk_adv_sa177", "chk_adv_sa178"],
+    "Advisories": ["chk_adv_sa117", "chk_adv_sa140", "chk_adv_sa142", "chk_adv_sa146", "chk_adv_sa147", "chk_adv_sa149", "chk_adv_sa150", "chk_adv_sa151", "chk_adv_sa152", "chk_adv_sa153", "chk_adv_sa154", "chk_adv_sa155", "chk_adv_sa156", "chk_adv_sa157", "chk_adv_sa158", "chk_adv_sa159", "chk_adv_sa160", "chk_adv_sa161", "chk_adv_sa162", "chk_adv_sa163", "chk_adv_sa164", "chk_adv_sa165", "chk_adv_sa166", "chk_adv_sa167", "chk_adv_sa168", "chk_adv_sa169", "chk_adv_sa170", "chk_adv_sa171", "chk_adv_sa172", "chk_adv_sa173", "chk_adv_sa174", "chk_adv_sa175", "chk_adv_sa176", "chk_adv_sa177", "chk_adv_sa178", "chk_adv_sa201", "chk_adv_sa205", "chk_adv_sa206", "chk_adv_sa207", "chk_adv_sa208", "chk_adv_sa209", "chk_adv_sa210", "chk_adv_sa211", "chk_adv_sa212", "chk_adv_sa213", "chk_adv_sa214", "chk_adv_sa215", "chk_adv_sa216", "chk_adv_sa217", "chk_adv_sa218", "chk_adv_sa219", "chk_adv_sa220", "chk_adv_sa221", "chk_adv_sa222", "chk_adv_sa223", "chk_adv_sa224", "chk_adv_sa225"],
 }
 
 default_config_rules = [
@@ -795,6 +800,12 @@ with tab_catalog:
                 c1, c2 = st.columns(2)
                 with c1: st.text_input("Expected Auth Methods (comma-separated)", value=st.session_state.get("param_aaa_authen_methods", "local"), key="param_aaa_authen_methods")
                 with c2: st.selectbox("Auth Type", ["login", "enable", "dot1x"], key="param_aaa_authen_types")
+                st.checkbox(
+                    "Require an explicit console method list (ANTA 1.11)",
+                    value=st.session_state.get("param_aaa_authen_require_console", True), key="param_aaa_authen_require_console",
+                    help="Applies to Auth Type 'login'. Untick to accept switches that use the default login method list "
+                         "without an explicit 'login' (before EOS 4.36) or 'console' (EOS 4.36+) list. All returned lists are still checked.",
+                )
             
             bind_cb("Verify Authorization Methods (`VerifyAuthzMethods`)", "chk_aaa_authz")
             if st.session_state["master_test_states"].get("chk_aaa_authz"):
@@ -974,6 +985,10 @@ with tab_catalog:
                 st.text_input("Accepted Cooling States", value=st.session_state.get("param_hw_cooling_states", "ok"), key="param_hw_cooling_states")
 
             bind_cb("Verify Environment Power (`VerifyEnvironmentPower`)", "chk_hw_power")
+            if st.session_state["master_test_states"].get("chk_hw_power"):
+                c1, c2 = st.columns(2)
+                with c1: st.number_input("Min input voltage (V, 0 = do not check)", min_value=0, value=int(st.session_state.get("param_hw_power_min_v", 0)), step=1, key="param_hw_power_min_v")
+                with c2: st.selectbox("Feeds that must meet it (ANTA 1.11)", ["A", "B", "any", "both"], key="param_hw_power_feeds", disabled=not st.session_state.get("param_hw_power_min_v", 0))
             bind_cb("Verify Environment System Cooling (`VerifyEnvironmentSystemCooling`)", "chk_hw_sys_cooling")
             bind_cb("Verify Hardware Capacity (`VerifyHardwareCapacityUtilization`)", "chk_hw_capacity")
             bind_cb("Verify Hardware Inventory (`VerifyInventory`)", "chk_hw_inventory")
@@ -1449,7 +1464,7 @@ with tab_catalog:
                 render_list_editor("VLANs", "param_vlan_status_list", [{'vlan_id': 10, 'status': 'active'}])
 
         elif selected_cat == "Advisories":
-            st.caption("New in ANTA 1.10.0 — checks whether the device is impacted by a given Arista Security Advisory. No parameters required.")
+            st.caption("Added in ANTA 1.10.0 and extended in 1.11.0 — checks whether the device is impacted by a given Arista Security Advisory. No parameters required.")
             bind_cb("Verify Security Advisory 0117 - CVE-2025-0936 (`SA117`)", "chk_adv_sa117")
             bind_cb("Verify Security Advisory 0140 - CVE-2026-10040 (`SA140`)", "chk_adv_sa140")
             bind_cb("Verify Security Advisory 0142 - CVE-2026-12546 (`SA142`)", "chk_adv_sa142")
@@ -1485,6 +1500,28 @@ with tab_catalog:
             bind_cb("Verify Security Advisory 0176 - CVE-2026-73469 (`SA176`)", "chk_adv_sa176")
             bind_cb("Verify Security Advisory 0177 - CVE-2026-77190 (`SA177`)", "chk_adv_sa177")
             bind_cb("Verify Security Advisory 0178 - CVE-2026-73440 (`SA178`)", "chk_adv_sa178")
+            bind_cb("Verify Security Advisory 0201 - CVE-2026-111943 (`SA201`)", "chk_adv_sa201")
+            bind_cb("Verify Security Advisory 0205 - CVE-2026-120975 (`SA205`)", "chk_adv_sa205")
+            bind_cb("Verify Security Advisory 0206 - CVE-2026-121368 (`SA206`)", "chk_adv_sa206")
+            bind_cb("Verify Security Advisory 0207 - CVE-2026-120982 (`SA207`)", "chk_adv_sa207")
+            bind_cb("Verify Security Advisory 0208 - CVE-2026-121289 (`SA208`)", "chk_adv_sa208")
+            bind_cb("Verify Security Advisory 0209 - CVE-2026-121290 (`SA209`)", "chk_adv_sa209")
+            bind_cb("Verify Security Advisory 0210 - CVE-2026-121293 (`SA210`)", "chk_adv_sa210")
+            bind_cb("Verify Security Advisory 0211 - CVE-2026-120978 (`SA211`)", "chk_adv_sa211")
+            bind_cb("Verify Security Advisory 0212 - CVE-2026-120979 (`SA212`)", "chk_adv_sa212")
+            bind_cb("Verify Security Advisory 0213 - CVE-2026-121286 (`SA213`)", "chk_adv_sa213")
+            bind_cb("Verify Security Advisory 0214 - CVE-2026-120980/120981 (`SA214`)", "chk_adv_sa214")
+            bind_cb("Verify Security Advisory 0215 - CVE-2026-120983 (`SA215`)", "chk_adv_sa215")
+            bind_cb("Verify Security Advisory 0216 - CVE-2026-120976 (`SA216`)", "chk_adv_sa216")
+            bind_cb("Verify Security Advisory 0217 - CVE-2026-120977 (`SA217`)", "chk_adv_sa217")
+            bind_cb("Verify Security Advisory 0218 - CVE-2026-121371 (`SA218`)", "chk_adv_sa218")
+            bind_cb("Verify Security Advisory 0219 - CVE-2026-120974 (`SA219`)", "chk_adv_sa219")
+            bind_cb("Verify Security Advisory 0220 - CVE-2026-121367 (`SA220`)", "chk_adv_sa220")
+            bind_cb("Verify Security Advisory 0221 - CVE-2026-121287/121288 (`SA221`)", "chk_adv_sa221")
+            bind_cb("Verify Security Advisory 0222 - CVE-2026-121291/121292 (`SA222`)", "chk_adv_sa222")
+            bind_cb("Verify Security Advisory 0223 - CVE-2026-121294/121295 (`SA223`)", "chk_adv_sa223")
+            bind_cb("Verify Security Advisory 0224 - CVE-2026-121370 (`SA224`)", "chk_adv_sa224")
+            bind_cb("Verify Security Advisory 0225 - CVE-2026-121369 (`SA225`)", "chk_adv_sa225")
 
         elif selected_cat == "Custom":
             st.caption("Paste tests in ANTA catalog format. They are added to the checkbox selection on every run (and to saved profiles).")
@@ -1509,7 +1546,8 @@ with tab_catalog:
     key_to_test_map = {
         "chk_aaa_authen": ("anta.tests.aaa", "VerifyAuthenMethods", {
             "methods": [m.strip() for m in st.session_state.get("param_aaa_authen_methods", "local").split(",") if m.strip()],
-            "types": [st.session_state.get("param_aaa_authen_types", "login")]
+            "types": [st.session_state.get("param_aaa_authen_types", "login")],
+            "require_console_method": bool(st.session_state.get("param_aaa_authen_require_console", True)),
         }),
         "chk_aaa_authz": ("anta.tests.aaa", "VerifyAuthzMethods", {
             "methods": [m.strip() for m in st.session_state.get("param_aaa_authz_methods", "group tacacs+").split(",") if m.strip()],
@@ -1599,7 +1637,11 @@ with tab_catalog:
         "chk_hw_drops": ("anta.tests.hardware", "VerifyAdverseDrops", None),
         "chk_hw_chassis": ("anta.tests.hardware", "VerifyChassisHealth", None),
         "chk_hw_cooling_fans": ("anta.tests.hardware", "VerifyEnvironmentCooling", {"states": [s.strip() for s in st.session_state.get("param_hw_cooling_states", "ok").split(",") if s.strip()]}),
-        "chk_hw_power": ("anta.tests.hardware", "VerifyEnvironmentPower", {"states": ["ok"]}),
+        "chk_hw_power": ("anta.tests.hardware", "VerifyEnvironmentPower", (
+            {"states": ["ok"], "min_input_voltage": int(st.session_state["param_hw_power_min_v"]),
+             "input_voltage_feeds": st.session_state.get("param_hw_power_feeds", "A")}
+            if st.session_state.get("param_hw_power_min_v", 0) else {"states": ["ok"]}
+        )),
         "chk_hw_sys_cooling": ("anta.tests.hardware", "VerifyEnvironmentSystemCooling", None),
         "chk_hw_capacity": ("anta.tests.hardware", "VerifyHardwareCapacityUtilization", None),
         "chk_hw_inventory": ("anta.tests.hardware", "VerifyInventory", None),
@@ -1828,6 +1870,28 @@ with tab_catalog:
         "chk_adv_sa176": ("anta.tests.advisories", "SA176", None),
         "chk_adv_sa177": ("anta.tests.advisories", "SA177", None),
         "chk_adv_sa178": ("anta.tests.advisories", "SA178", None),
+        "chk_adv_sa201": ("anta.tests.advisories", "SA201", None),
+        "chk_adv_sa205": ("anta.tests.advisories", "SA205", None),
+        "chk_adv_sa206": ("anta.tests.advisories", "SA206", None),
+        "chk_adv_sa207": ("anta.tests.advisories", "SA207", None),
+        "chk_adv_sa208": ("anta.tests.advisories", "SA208", None),
+        "chk_adv_sa209": ("anta.tests.advisories", "SA209", None),
+        "chk_adv_sa210": ("anta.tests.advisories", "SA210", None),
+        "chk_adv_sa211": ("anta.tests.advisories", "SA211", None),
+        "chk_adv_sa212": ("anta.tests.advisories", "SA212", None),
+        "chk_adv_sa213": ("anta.tests.advisories", "SA213", None),
+        "chk_adv_sa214": ("anta.tests.advisories", "SA214", None),
+        "chk_adv_sa215": ("anta.tests.advisories", "SA215", None),
+        "chk_adv_sa216": ("anta.tests.advisories", "SA216", None),
+        "chk_adv_sa217": ("anta.tests.advisories", "SA217", None),
+        "chk_adv_sa218": ("anta.tests.advisories", "SA218", None),
+        "chk_adv_sa219": ("anta.tests.advisories", "SA219", None),
+        "chk_adv_sa220": ("anta.tests.advisories", "SA220", None),
+        "chk_adv_sa221": ("anta.tests.advisories", "SA221", None),
+        "chk_adv_sa222": ("anta.tests.advisories", "SA222", None),
+        "chk_adv_sa223": ("anta.tests.advisories", "SA223", None),
+        "chk_adv_sa224": ("anta.tests.advisories", "SA224", None),
+        "chk_adv_sa225": ("anta.tests.advisories", "SA225", None),
     }
 
     # Map dynamic config rules if box is ticked
